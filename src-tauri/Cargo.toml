@@ -29,6 +29,7 @@ tower = "0.4"
 tower-http = { version = "0.5", features = ["cors"] }
 axum = "0.8.4"
 chrono = "0.4.41"
+local-ip-address = "0.6"
 
 [dependencies.sled]
 version="^0.34.7"

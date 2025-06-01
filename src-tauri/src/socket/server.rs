@@ -2,6 +2,8 @@ use socketioxide::{extract::{Data, SocketRef}, SocketIo};
 use tower::ServiceBuilder;
 use tower_http::cors::CorsLayer;
 use crate::get_app_state;
+use local_ip_address::local_ip;
+
 
 
 async fn on_connect(socket: SocketRef, Data(data): Data<String> ) {
@@ -72,8 +74,10 @@ pub async fn start_socketio_server(port: u16) -> Result<(), Box<dyn std::error::
             .layer(CorsLayer::permissive())
             .layer(layer));
 
+    let my_domain = local_ip().unwrap();
+
     // Start the server
-    let listener = tokio::net::TcpListener::bind(format!("localhost:{}", port)).await?;
+    let listener = tokio::net::TcpListener::bind(format!("{}:{}", my_domain, port)).await?;
     println!("Socket.IO server listening on port {}", port);
     
     axum::serve(listener, app).await?;

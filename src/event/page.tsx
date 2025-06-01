@@ -78,7 +78,8 @@ function EventPage() {
     };
     const fetchDataSocket = () => {
       try {
-        socketRef.current = io(`http://` + domain);
+        socketRef.current = io("http://" + domain);
+        console.log("Connecting to socket server at:http://" + domain);
 
         socketRef.current.on("join_return", (data: any) => {
           console.log("Connected to server with ID:", socketRef.current.id);
