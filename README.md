@@ -1,6 +1,7 @@
-# Tauri + React + Typescript
+# list-checker-tauri
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+これは list-checker を tauri で作り直したものです。  
+=> https://github.com/TommyZ-7/list_checker
 
 ## Recommended IDE Setup
 
