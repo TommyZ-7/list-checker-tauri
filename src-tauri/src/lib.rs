@@ -48,7 +48,7 @@ pub struct Eventstruct {
 }
     
 #[tauri::command]
-fn register_event(data: String, state: State<AppState>) -> String {
+fn register_event(data: String) -> String {
 
     let parsed_data: Eventstruct = match serde_json::from_str(&data) {
         Ok(event) => event,
@@ -74,13 +74,13 @@ fn register_event(data: String, state: State<AppState>) -> String {
 }
 
 #[tauri::command]
-fn get_event(uuid: String, state: State<AppState>) -> Option<Eventstruct> {
+fn get_event(uuid: String, ) -> Option<Eventstruct> {
     let app_state = get_app_state();
 
 
     app_state.get(&format!("{}:datas", uuid))
 
-    
+
 
 }
 

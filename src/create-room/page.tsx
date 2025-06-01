@@ -3,7 +3,6 @@ import { Card, CardHeader, CardBody } from "@yamada-ui/react";
 import { IconButton } from "@yamada-ui/react";
 import { ArrowRight } from "@yamada-ui/lucide";
 import { Link } from "react-router";
-import { Button } from "@yamada-ui/react";
 
 function CreateRoom() {
   return (

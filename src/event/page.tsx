@@ -1,9 +1,8 @@
 import "@/App.css";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
-import { data, useParams } from "react-router";
-import { IconButton, is } from "@yamada-ui/react";
-import { Input } from "@yamada-ui/react";
+import { useParams } from "react-router";
+import { IconButton } from "@yamada-ui/react";
 import { invoke } from "@tauri-apps/api/core";
 import { Text } from "@yamada-ui/react";
 
@@ -16,24 +15,6 @@ type Attendee = {
   attended: boolean;
 };
 import { Card, CardBody, CardFooter } from "@yamada-ui/react";
-import { E } from "node_modules/framer-motion/dist/types.d-CtuPurYT";
-
-const SunIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    strokeWidth={1.5}
-    stroke="currentColor"
-    className="w-6 h-6"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-6.364-.386 1.591-1.591M3 12h2.25m.386-6.364 1.591 1.591"
-    />
-  </svg>
-);
 
 function EventPage() {
   const [expectedAttendees, setExpectedAttendees] = useState<Attendee[]>([
@@ -46,23 +27,13 @@ function EventPage() {
   const [roomInfo, setRoomInfo] = useState<string>("");
   const [onTheDay, setOnTheDay] = useState<string[]>([]);
   const [arrowtoday, setArrowToday] = useState<boolean>(false);
-  const [isHost, setIsHost] = useState<boolean>(
-    useParams<{ isHost: string }>().isHost === "true" ? true : false
-  );
-  const [domain, setDomain] = useState<string>(
-    useParams<{ domain: string }>().domain || "default"
-  );
+  const isHost =
+    useParams<{ isHost: string }>().isHost === "true" ? true : false;
+  const domain = useParams<{ domain: string }>().domain || "default";
   const socketRef = useRef<any>(null);
 
   const { uuid } = useParams<{ uuid: string }>();
   const inputRef = useRef<HTMLInputElement>(null);
-
-  interface EventData {
-    participants: string[];
-    eventname: string;
-    eventinfo: string;
-    arrowtoday: boolean;
-  }
 
   useEffect(() => {
     if (!uuid) {
@@ -74,6 +45,7 @@ function EventPage() {
       return;
     }
     console.log("EventPage mounted with UUID:", uuid);
+    console.log("arrowtoday:", arrowtoday);
 
     const fetchData = async () => {
       try {
@@ -354,7 +326,20 @@ function EventPage() {
                 </div>
               </div>
             </CardBody>
-            <CardFooter className="flex justify-end"></CardFooter>
+            <CardFooter className="flex justify-end">
+              <Text className="text-sm text-gray-500">
+                {roomInfo || "イベント情報がありません"}
+              </Text>
+              <button
+                className="ml-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors duration-200"
+                onClick={() => {
+                  const compressedData = dataCompression();
+                  console.log("Compressed Data:", compressedData);
+                }}
+              >
+                compresTest
+              </button>
+            </CardFooter>
           </Card>
         </div>
 
