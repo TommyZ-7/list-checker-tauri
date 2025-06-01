@@ -8,6 +8,7 @@ const CreateRoom = React.lazy(() => import("./create-room/page"));
 const CreateRoomMain = React.lazy(() => import("./create-room/main/page"));
 const JoinRoom = React.lazy(() => import("./join-room/page"));
 const DebugPage = React.lazy(() => import("./debug/page"));
+const EventPage = React.lazy(() => import("./event/page"));
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
@@ -23,6 +24,8 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
             </Route>
 
             <Route path="join-room" element={<JoinRoom />} />
+
+            <Route path="event/:uuid/:isHost/:domain" element={<EventPage />} />
 
             <Route path="debug" element={<DebugPage />} />
           </Routes>

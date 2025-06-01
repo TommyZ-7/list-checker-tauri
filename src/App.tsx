@@ -1,6 +1,7 @@
 import "./App.css";
 import { Button } from "@yamada-ui/react";
 import { Link } from "react-router";
+import { invoke } from "@tauri-apps/api/core";
 
 function App() {
   return (
@@ -14,6 +15,18 @@ function App() {
         </Button>
         <Button as={Link} to="/debug">
           debug
+        </Button>
+        <Button
+          onClick={async () => {
+            try {
+              const result = await invoke("debug_run_server");
+              console.log("Server Test Result:", result);
+            } catch (error) {
+              console.error("Error during server test:", error);
+            }
+          }}
+        >
+          サーバーテスト
         </Button>
       </div>
     </main>

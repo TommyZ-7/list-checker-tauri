@@ -330,7 +330,7 @@ const EventRegistration = () => {
                       </Link>
                       <p>{uuid}</p>
                       <Link
-                        to={`/event/${uuid}`}
+                        to={`/event/${uuid}/true`}
                         className="text-blue-500 hover:underline mt-4 inline-block"
                       >
                         イベントページへ

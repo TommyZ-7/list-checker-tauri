@@ -18,7 +18,11 @@ function CreateRoom() {
         <Card>
           <CardHeader>リストチェック</CardHeader>
           <CardBody>
-            <Button as={Link} to="/create-room/main" />
+            <IconButton
+              as={Link}
+              to="/create-room/main"
+              icon={<ArrowRight />}
+            />
           </CardBody>
         </Card>
         <Card>
