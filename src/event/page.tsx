@@ -85,13 +85,9 @@ function EventPage() {
 
           socketRef.current.on("register_ontheday_return", (data: any) => {
             console.log("On the day data received from server:", data);
+            console.log("Current onTheDayCopyRef:", onTheDayCopyRef.current);
             if (data) {
-              for (const onthedaytmp of data) {
-                if (!onTheDayCopyRef.current.includes(onthedaytmp)) {
-                  onTheDayCopyRef.current.push(onthedaytmp);
-                }
-              }
-              setOnTheDay(onTheDayCopyRef.current);
+              receiveOnTheDay(data);
             } else {
               console.error("No on the day data received.");
             }
@@ -147,13 +143,9 @@ function EventPage() {
 
         socketRef.current.on("register_ontheday_return", (data: any) => {
           console.log("On the day data received from server:", data);
+          console.log("Current onTheDayCopyRef:", onTheDayCopyRef.current);
           if (data) {
-            for (const onthedaytmp of data) {
-              if (!onTheDayCopyRef.current.includes(onthedaytmp)) {
-                onTheDayCopyRef.current.push(onthedaytmp);
-              }
-            }
-            setOnTheDay(onTheDayCopyRef.current);
+            receiveOnTheDay(data);
           } else {
             console.error("No on the day data received.");
           }
@@ -206,6 +198,22 @@ function EventPage() {
     mergedArray.sort((a, b) => a - b);
     // 重複を排除
     return Array.from(new Set(mergedArray));
+  };
+
+  const mergeArraysString = (array1: string[], array2: string[]): string[] => {
+    //重複なしでマージ
+    const mergedArray = [...array1, ...array2];
+
+    // 重複を排除
+    return Array.from(new Set(mergedArray));
+  };
+
+  const receiveOnTheDay = (ids: string[]) => {
+    console.log("Received on the day IDs:", ids);
+    const mergedOnTheDay = mergeArraysString(onTheDayCopyRef.current, ids);
+    console.log("Merged on the day IDs:", mergedOnTheDay);
+    setOnTheDay(mergedOnTheDay);
+    onTheDayCopyRef.current = mergedOnTheDay;
   };
 
   const dataDeCompression = (compressedData: number[]) => {
