@@ -1,6 +1,6 @@
 import "@/App.css";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -42,6 +42,7 @@ const EventRegistration = () => {
   });
   const [isFileLoaded, setIsFileLoaded] = useState(false);
   const [uuid, setUuid] = useState("");
+  const [domain, setDomain] = useState("");
 
   const steps = [
     {
@@ -73,6 +74,18 @@ const EventRegistration = () => {
       type: "settings",
     },
   ];
+
+  useEffect(() => {
+    const fetchDomain = async () => {
+      try {
+        const result = await invoke("get_local_ip");
+        setDomain(result as string);
+      } catch (error) {
+        console.error("IPアドレスの取得に失敗:", error);
+      }
+    };
+    fetchDomain();
+  }, []);
 
   const onDrop = async (files: File[]) => {
     setIsFileLoaded(false);
@@ -330,7 +343,7 @@ const EventRegistration = () => {
                       </Link>
                       <p>{uuid}</p>
                       <Link
-                        to={`/event/${uuid}/true`}
+                        to={`/event/${uuid}/true/${domain}:12345`}
                         className="text-blue-500 hover:underline mt-4 inline-block"
                       >
                         イベントページへ

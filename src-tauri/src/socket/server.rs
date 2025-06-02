@@ -2,8 +2,13 @@ use socketioxide::{extract::{Data, SocketRef}, SocketIo};
 use tower::ServiceBuilder;
 use tower_http::cors::CorsLayer;
 use crate::get_app_state;
+use crate::get_app_state2;
+use crate::get_app_state3;
 use local_ip_address::local_ip;
 use serde::{Deserialize, Serialize};
+
+
+
 
 
 
@@ -68,9 +73,79 @@ struct AttendeeData {
 
 async fn register_attendees(socket: SocketRef, Data(data): Data<AttendeeData>) {
     println!("Received register_attendees from {}: {:?}", socket.id, data);
-    println!("Attendee index: {:?}", data.attendeeindex);
-    println!("UUID: {}", data.uuid);
+
+    let app_state = get_app_state2();
+    let key = data.uuid.clone() + ":attendees";
+
+    
+
+    
+    let result = app_state.get(&key);
+
+    // result と data.attendeeindex をかぶりなしでマージ
+    let merged_attendees: Vec<i32> = match result {
+        Some(existing) => {
+            let mut combined = existing.clone();
+            for &item in &data.attendeeindex {
+                if !combined.contains(&item) {
+                    combined.push(item);
+                }
+            }
+            combined
+        },
+        None => data.attendeeindex.clone(),
+    };
+    // merged_attendees を 昇順にソート
+    let mut sorted_attendees = merged_attendees.clone();
+    sorted_attendees.sort_unstable();
+
+    println!("Merged attendees data: {:?}", sorted_attendees);
+
+    app_state.insert(key.clone(), sorted_attendees.clone());
+
+    // 参加者の情報をクライアントに送信
+    if let Err(e) = socket.emit("register_attendees_return", &sorted_attendees) {
+        eprintln!("Failed to send attendees data: {}", e);
+    }
 }
+
+#[derive(Deserialize, Serialize, Debug)]
+struct OnTheDayData {
+    ontheday: Vec<String>,
+    uuid: String,
+}
+
+async fn register_ontheday(socket: SocketRef, Data(data): Data<OnTheDayData>) {
+    println!("Received register_ontheday from {}: {:?}", socket.id, data.ontheday);
+    
+    let app_state = get_app_state3();
+    let key = data.uuid.clone() + ":ontheday";
+
+    let result = app_state.get(&key);
+
+    // result と data.ontheday をかぶりなしでマージ
+    let merged_ontheday: Vec<String> = match result {
+        Some(existing) => {
+            let mut combined = existing.clone();
+            for item in &data.ontheday {
+                if !combined.contains(item) {
+                    combined.push(item.clone());
+                }
+            }
+            combined
+        },
+        None => data.ontheday.clone(),
+    };
+
+
+    app_state.insert(key.clone(), merged_ontheday.clone());
+
+    // 参加者の情報をクライアントに送信
+    if let Err(e) = socket.emit("register_ontheday_return", &merged_ontheday) {
+        eprintln!("Failed to send ontheday data: {}", e);
+    }
+}
+
 
 pub async fn start_socketio_server(port: u16) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let (layer, io) = SocketIo::new_layer();
@@ -88,6 +163,7 @@ pub async fn start_socketio_server(port: u16) -> Result<(), Box<dyn std::error::
         s.on("join", join_data);
         s.on("register_today" , register_today);
         s.on("register_attendees", register_attendees);
+        s.on("register_ontheday" , register_ontheday);
     });
 
     // Create the app with CORS and Socket.IO layers

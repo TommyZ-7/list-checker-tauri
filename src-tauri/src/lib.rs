@@ -5,13 +5,22 @@ use tauri::State;
 use std::sync::{Arc, Mutex, OnceLock};
 
 
+
 pub mod socket;
 
 pub use socket::*;
 
+
 #[derive(Debug, Default)]
 pub struct AppState {
     store: Mutex<HashMap<String, Eventstruct>>,
+}
+pub struct AppState2 {
+    store: Mutex<HashMap<String, Vec<i32>>>,
+}
+
+pub struct AppState3 {
+    store: Mutex<HashMap<String, Vec<String>>>,
 }
 
 impl AppState {
@@ -30,10 +39,57 @@ impl AppState {
     }
 }
 
+impl AppState2 {
+    pub fn new() -> Self {
+        Self {
+            store: Mutex::new(HashMap::new()),
+        }
+    }
+    
+    pub fn insert(&self, key: String, value: Vec<i32>) {
+        let mut store = self.store.lock().unwrap();
+        store.insert(key, value);
+    }
+    
+    pub fn get(&self, key: &str) -> Option<Vec<i32>> {
+        let store = self.store.lock().unwrap();
+        store.get(key).cloned()
+    }
+    
+}
+
+impl AppState3 {
+    pub fn new() -> Self {
+        Self {
+            store: Mutex::new(HashMap::new()),
+        }
+    }
+    
+    pub fn insert(&self, key: String, value: Vec<String>) {
+        let mut store = self.store.lock().unwrap();
+        store.insert(key, value);
+    }
+    
+    pub fn get(&self, key: &str) -> Option<Vec<String>> {
+        let store = self.store.lock().unwrap();
+        store.get(key).cloned()
+    }
+}
+
 static APP_STATE: OnceLock<Arc<AppState>> = OnceLock::new();
+static APP_STATE2: OnceLock<Arc<AppState2>> = OnceLock::new();
+static APP_STATE3: OnceLock<Arc<AppState3>> = OnceLock::new();
+
 
 pub fn get_app_state() -> Arc<AppState> {
     APP_STATE.get_or_init(|| Arc::new(AppState::new())).clone()
+}
+
+pub fn get_app_state2() -> Arc<AppState2> {
+    APP_STATE2.get_or_init(|| Arc::new(AppState2::new())).clone()
+}
+pub fn get_app_state3() -> Arc<AppState3> {
+    APP_STATE3.get_or_init(|| Arc::new(AppState3::new())).clone()
 }
 
 
@@ -79,9 +135,17 @@ fn get_event(uuid: String, ) -> Option<Eventstruct> {
 
 
     app_state.get(&format!("{}:datas", uuid))
+}
 
-
-
+#[tauri::command]
+fn get_local_ip() -> String {
+    match local_ip_address::local_ip() {
+        Ok(ip) => ip.to_string(),
+        Err(e) => {
+            eprintln!("Failed to get local IP address: {}", e);
+            "Error".to_string()
+        }
+    }
 }
 
 
@@ -108,13 +172,56 @@ async fn debug_run_server() -> String {
     
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct AttendeeIndex {
+    attendeeindex: Vec<i32>,
+    uuid: String,
+}
+
+
+
+#[tauri::command]
+fn register_attendees(data: AttendeeIndex) -> String {
+    println!("Received register_attendees: {:?}", data);
+
+    let app_state = get_app_state2();
+    let key = format!("{}:attendees", data.uuid);
+
+    // 既存のデータを取得
+    let mut existing_attendees = app_state.get(&key).unwrap_or_else(|| vec![]);
+
+    // 新しい参加者を追加（重複を避ける）
+    for &index in &data.attendeeindex {
+        if !existing_attendees.contains(&index) {
+            existing_attendees.push(index);
+        }
+    }
+
+    //昇順にソート
+    existing_attendees.sort_unstable();
+
+    // 更新されたデータを保存
+    app_state.insert(key, existing_attendees.clone());
+
+    println!("Updated attendees for {}: {:?}", data.uuid, existing_attendees);
+
+    // 参加者の情報をクライアントに送信
+    
+
+    "Attendees registered successfully".to_string()
+
+}
+
+
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(AppState::default())
-        .invoke_handler(tauri::generate_handler![register_event, debug_hashmap, get_event, debug_run_server])
+        .invoke_handler(tauri::generate_handler![
+            register_event, debug_hashmap, get_event, debug_run_server, register_attendees, get_local_ip
+            ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

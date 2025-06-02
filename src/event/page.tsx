@@ -17,9 +17,7 @@ type Attendee = {
 import { Card, CardBody, CardFooter } from "@yamada-ui/react";
 
 function EventPage() {
-  const [expectedAttendees, setExpectedAttendees] = useState<Attendee[]>([
-    { id: "データ未読み込み", attended: true },
-  ]);
+  const [expectedAttendees, setExpectedAttendees] = useState<Attendee[]>([]);
   const [newAttendee, setNewAttendee] = useState<string>("");
   const [dataFetched, setDataFetched] = useState(false);
   const [selectedAttendee, setSelectedAttendee] = useState<string>("");
@@ -31,6 +29,8 @@ function EventPage() {
     useParams<{ isHost: string }>().isHost === "true" ? true : false;
   const domain = useParams<{ domain: string }>().domain || "default";
   const socketRef = useRef<any>(null);
+  const expectedAttendeesCopyRef = useRef<string[]>([]);
+  const onTheDayCopyRef = useRef<string[]>([]);
 
   const { uuid } = useParams<{ uuid: string }>();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -64,10 +64,45 @@ function EventPage() {
               attended: false,
             }))
           );
+          expectedAttendeesCopyRef.current = response.participants;
           setRoomName(response.eventname);
           setRoomInfo(response.eventinfo);
           setArrowToday(response.arrowtoday);
           console.log("Data fetched successfully:", response);
+
+          // ここでソケットに参加
+          socketRef.current = io("http://" + domain);
+          console.log("Connecting to socket server at:http://" + domain);
+
+          socketRef.current.on("register_attendees_return", (data: any) => {
+            console.log("Attendance data received from server:", data);
+            if (data) {
+              dataDeCompression(data);
+            } else {
+              console.error("No attendee index data received.");
+            }
+          });
+
+          socketRef.current.on("register_ontheday_return", (data: any) => {
+            console.log("On the day data received from server:", data);
+            if (data) {
+              for (const onthedaytmp of data) {
+                if (!onTheDayCopyRef.current.includes(onthedaytmp)) {
+                  onTheDayCopyRef.current.push(onthedaytmp);
+                }
+              }
+              setOnTheDay(onTheDayCopyRef.current);
+            } else {
+              console.error("No on the day data received.");
+            }
+          });
+
+          return () => {
+            if (socketRef.current) {
+              socketRef.current.disconnect();
+              socketRef.current = null;
+            }
+          };
         } else {
           console.error("No data received for the event.");
         }
@@ -84,6 +119,9 @@ function EventPage() {
         socketRef.current.on("join_return", (data: any) => {
           console.log("Connected to server with ID:", socketRef.current.id);
           console.log("Connection data:", data);
+
+          expectedAttendeesCopyRef.current = data.participants;
+
           if (data) {
             setExpectedAttendees(
               data.participants.map((attendeeId: string) => ({
@@ -100,10 +138,24 @@ function EventPage() {
         });
         socketRef.current.on("register_attendees_return", (data: any) => {
           console.log("Attendance data received from server:", data);
-          if (data.attendeeindex) {
-            dataDeCompression(data.attendeeindex);
+          if (data) {
+            dataDeCompression(data);
           } else {
             console.error("No attendee index data received.");
+          }
+        });
+
+        socketRef.current.on("register_ontheday_return", (data: any) => {
+          console.log("On the day data received from server:", data);
+          if (data) {
+            for (const onthedaytmp of data) {
+              if (!onTheDayCopyRef.current.includes(onthedaytmp)) {
+                onTheDayCopyRef.current.push(onthedaytmp);
+              }
+            }
+            setOnTheDay(onTheDayCopyRef.current);
+          } else {
+            console.error("No on the day data received.");
           }
         });
 
@@ -126,7 +178,7 @@ function EventPage() {
       fetchDataSocket();
       setDataFetched(true);
     }
-  }, [uuid]);
+  }, []);
 
   const scrollToElement = (elementId: string) => {
     const element = document.getElementById(elementId);
@@ -148,13 +200,25 @@ function EventPage() {
     return compressedData;
   };
 
+  const mergeArrays = (array1: number[], array2: number[]): number[] => {
+    const mergedArray = [...array1, ...array2];
+    // 昇順でソート
+    mergedArray.sort((a, b) => a - b);
+    // 重複を排除
+    return Array.from(new Set(mergedArray));
+  };
+
   const dataDeCompression = (compressedData: number[]) => {
-    // データ復元処理をここに実装
-    const newAttendees: Attendee[] = expectedAttendees;
-    for (let i = 0; i < compressedData.length; i++) {
-      newAttendees[compressedData[i]].attended = true;
-    }
-    setExpectedAttendees(newAttendees);
+    console.log("Decompressing data:", expectedAttendeesCopyRef.current);
+    const mergeArraysResult = mergeArrays(compressedData, dataCompression());
+    const updatedAttendees = expectedAttendeesCopyRef.current.map(
+      (attendeeId, index) => ({
+        id: attendeeId,
+        attended: mergeArraysResult.includes(index),
+      })
+    );
+
+    setExpectedAttendees(updatedAttendees);
   };
 
   const handleAttendance = (e: React.FormEvent<HTMLFormElement>) => {
@@ -173,17 +237,15 @@ function EventPage() {
         alert(`${attendeeId} は既に出席済みです。`);
       } else {
         // ソケットサーバーに出席情報を送信
-        if (isHost) {
-          console.log("Sending attendance data to server:");
-        } else {
-          scrollToElement(attendeeId);
-          setSelectedAttendee(attendeeId);
-          console.log("Selected attendee:", attendeeId);
-          socketRef.current.emit("register_attendees", {
-            attendeeindex: dataCompression(),
-            uuid: uuid,
-          });
-        }
+        scrollToElement(attendeeId);
+        setSelectedAttendee(attendeeId);
+        existingAttendee.attended = true;
+        setExpectedAttendees([...expectedAttendees]);
+        console.log("Selected attendee:", attendeeId);
+        socketRef.current.emit("register_attendees", {
+          attendeeindex: dataCompression(),
+          uuid: uuid,
+        });
       }
     } else {
       // 新規参加者として追加
@@ -191,6 +253,11 @@ function EventPage() {
         alert(`${attendeeId} は既に当日参加者に含まれています。`);
       } else {
         setOnTheDay((prev) => [...prev, attendeeId]);
+        onTheDayCopyRef.current = [...onTheDayCopyRef.current, attendeeId];
+        socketRef.current.emit("register_ontheday", {
+          ontheday: onTheDayCopyRef.current,
+          uuid: uuid,
+        });
       }
     }
 
@@ -360,9 +427,12 @@ function EventPage() {
                 onClick={() => {
                   const compressedData = dataCompression();
                   console.log("Compressed Data:", compressedData);
+                  console.log(
+                    mergeArrays([0, 3, 5, 7, 8], [1, 3, 4, 6, 8, 10])
+                  );
                 }}
               >
-                compresTest
+                Test
               </button>
             </CardFooter>
           </Card>
@@ -404,7 +474,7 @@ function EventPage() {
 
                       <td className="py-3 px-4 whitespace-nowrap text-right">
                         {student.attended ? (
-                          <span className="justify-center inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-green-100 text-green-800 animate-scaleIn">
+                          <span className="m-3 justify-center inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-green-100 text-green-800 animate-scaleIn">
                             <svg
                               className="mr-1.5 h-4 w-4 text-green-600"
                               fill="none"
