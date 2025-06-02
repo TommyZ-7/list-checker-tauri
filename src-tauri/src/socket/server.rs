@@ -104,7 +104,7 @@ async fn register_attendees(socket: SocketRef, Data(data): Data<AttendeeData>) {
     app_state.insert(key.clone(), sorted_attendees.clone());
 
     // 参加者の情報をクライアントに送信
-    if let Err(e) = socket.emit("register_attendees_return", &sorted_attendees) {
+    if let Err(e) = socket.broadcast().emit("register_attendees_return", &sorted_attendees).await {
         eprintln!("Failed to send attendees data: {}", e);
     }
 }
@@ -141,7 +141,7 @@ async fn register_ontheday(socket: SocketRef, Data(data): Data<OnTheDayData>) {
     app_state.insert(key.clone(), merged_ontheday.clone());
 
     // 参加者の情報をクライアントに送信
-    if let Err(e) = socket.emit("register_ontheday_return", &merged_ontheday) {
+    if let Err(e) = socket.broadcast().emit("register_ontheday_return", &merged_ontheday).await {
         eprintln!("Failed to send ontheday data: {}", e);
     }
 }
