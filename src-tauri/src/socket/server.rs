@@ -3,6 +3,7 @@ use tower::ServiceBuilder;
 use tower_http::cors::CorsLayer;
 use crate::get_app_state;
 use local_ip_address::local_ip;
+use serde::{Deserialize, Serialize};
 
 
 
@@ -52,6 +53,25 @@ async fn join_data(socket: SocketRef, Data(data): Data<String>) {
     }
 }
 
+async fn register_today(socket: SocketRef, Data(data): Data<String>) {
+    println!("Received register_today from {}: {}", socket.id, data);
+    
+}
+
+
+
+#[derive(Deserialize, Serialize, Debug)]
+struct AttendeeData {
+    attendeeindex: Vec<i32>,
+    uuid: String,
+}
+
+async fn register_attendees(socket: SocketRef, Data(data): Data<AttendeeData>) {
+    println!("Received register_attendees from {}: {:?}", socket.id, data);
+    println!("Attendee index: {:?}", data.attendeeindex);
+    println!("UUID: {}", data.uuid);
+}
+
 pub async fn start_socketio_server(port: u16) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let (layer, io) = SocketIo::new_layer();
 
@@ -64,8 +84,10 @@ pub async fn start_socketio_server(port: u16) -> Result<(), Box<dyn std::error::
         s.on("new_message", on_new_message);
         s.on("disconnect", on_disconnect);
         s.on_disconnect(on_disconnect);
-        s.on("connect", on_connect );
-        s.on("join", join_data)
+        s.on("connect", on_connect);
+        s.on("join", join_data);
+        s.on("register_today" , register_today);
+        s.on("register_attendees", register_attendees);
     });
 
     // Create the app with CORS and Socket.IO layers

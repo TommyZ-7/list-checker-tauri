@@ -98,6 +98,14 @@ function EventPage() {
             console.error("No data received from socket.");
           }
         });
+        socketRef.current.on("register_attendees_return", (data: any) => {
+          console.log("Attendance data received from server:", data);
+          if (data.attendeeindex) {
+            dataDeCompression(data.attendeeindex);
+          } else {
+            console.error("No attendee index data received.");
+          }
+        });
 
         socketRef.current.emit("join", uuid);
 
@@ -140,6 +148,15 @@ function EventPage() {
     return compressedData;
   };
 
+  const dataDeCompression = (compressedData: number[]) => {
+    // データ復元処理をここに実装
+    const newAttendees: Attendee[] = expectedAttendees;
+    for (let i = 0; i < compressedData.length; i++) {
+      newAttendees[compressedData[i]].attended = true;
+    }
+    setExpectedAttendees(newAttendees);
+  };
+
   const handleAttendance = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!newAttendee.trim()) return; // 空の入力は無視
@@ -155,11 +172,18 @@ function EventPage() {
       if (existingAttendee.attended) {
         alert(`${attendeeId} は既に出席済みです。`);
       } else {
-        // 出席登録
-        existingAttendee.attended = true;
-        setExpectedAttendees([...expectedAttendees]);
-        scrollToElement(attendeeId);
-        setSelectedAttendee(attendeeId);
+        // ソケットサーバーに出席情報を送信
+        if (isHost) {
+          console.log("Sending attendance data to server:");
+        } else {
+          scrollToElement(attendeeId);
+          setSelectedAttendee(attendeeId);
+          console.log("Selected attendee:", attendeeId);
+          socketRef.current.emit("register_attendees", {
+            attendeeindex: dataCompression(),
+            uuid: uuid,
+          });
+        }
       }
     } else {
       // 新規参加者として追加
