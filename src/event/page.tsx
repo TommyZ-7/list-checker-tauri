@@ -589,6 +589,7 @@ function EventPage() {
                     設定を確認
                   </button>
                 </div>
+                <div className="mt-2">{uuid}</div>
               </div>
             </CardFooter>
           </Card>
