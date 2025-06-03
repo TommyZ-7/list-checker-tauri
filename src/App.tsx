@@ -15,10 +15,21 @@ import {
 import { useNavigate } from "react-router";
 import { Button } from "@yamada-ui/react";
 
+type serverInfo = {
+  domain: string;
+  port: number;
+  uuid: string;
+};
+
 function App() {
   const [currentView, setCurrentView] = useState("main");
   const [selectedIcon, setSelectedIcon] = useState<IconType | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [serverInfo, setServerInfo] = useState<serverInfo>({
+    domain: "",
+    port: 12345,
+    uuid: "",
+  });
 
   const navigate = useNavigate();
 
@@ -267,17 +278,63 @@ function App() {
           </div>
 
           <div className="p-4 bg-white rounded-lg shadow-md">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              ルームID
-            </label>
-            <input
-              type="text"
-              placeholder="ルームIDを入力してください"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button className="w-full mt-3 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
-              参加する
-            </button>
+            <div className="text-lg text-gray-500 mb-2">
+              <input
+                value={serverInfo.uuid}
+                onChange={(e) =>
+                  setServerInfo({ ...serverInfo, uuid: e.target.value })
+                }
+                type="text"
+                placeholder="ルームIDを入力してください"
+                className="w-full px-3 py-2 m-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="text-lg text-gray-500 mb-2">
+              <input
+                value={serverInfo.domain}
+                onChange={(e) =>
+                  setServerInfo({ ...serverInfo, domain: e.target.value })
+                }
+                type="text"
+                placeholder="ドメインを入力してください"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="text-lg text-gray-500 mb-2">
+              <input
+                value={serverInfo.port}
+                onChange={(e) =>
+                  setServerInfo({
+                    ...serverInfo,
+                    port: parseInt(e.target.value),
+                  })
+                }
+                type="number"
+                placeholder="ポート番号を入力してください"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="text-sm text-gray-500 mt-2">
+              <Button
+                onClick={() => {
+                  if (
+                    !serverInfo.uuid ||
+                    !serverInfo.domain ||
+                    !serverInfo.port
+                  ) {
+                    alert("すべてのフィールドを入力してください");
+                    return;
+                  }
+                  handlePageChange(
+                    `/event/${serverInfo.uuid}/false/${serverInfo.domain}:${serverInfo.port}`
+                  );
+                }}
+                className="m-5 w-full bg-blue-500 text-white hover:bg-blue-600 transition-colors py-2 rounded-md"
+              >
+                参加する
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -329,10 +386,13 @@ function App() {
         <div className="fixed top-4 left-4 z-10">
           <button
             onClick={handleBack}
-            className="flex items-center space-x-2 bg-white p-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+            className="flex items-center space-x-2 bg-white p-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 "
+            style={{
+              borderRadius: "8px",
+            }}
           >
-            <ArrowLeft className="w-6 h-6 text-gray-600" />
-            <span className="text-sm font-medium">戻る</span>
+            <ArrowLeft className="w-9 h-9 -2 text-gray-600" />
+            <span className="text-sm font-medium m-2">戻る</span>
           </button>
         </div>
       )}
