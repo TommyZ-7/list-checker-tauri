@@ -1,10 +1,9 @@
 import "./App.css";
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Wifi,
   MonitorSpeaker,
   ArrowLeft,
-  Settings,
   Users,
   Calendar,
   Share2,
@@ -13,15 +12,15 @@ import {
   ListPlus,
   ListTodo,
 } from "lucide-react";
-import { Link } from "react-router";
+import { useNavigate } from "react-router";
 import { Button } from "@yamada-ui/react";
-import { Switch } from "@yamada-ui/react";
 
 function App() {
   const [currentView, setCurrentView] = useState("main");
   const [selectedIcon, setSelectedIcon] = useState<IconType | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [nextView, setNextView] = useState<MenuType | null>(null);
+
+  const navigate = useNavigate();
 
   type MenuType = "main" | "event" | "join" | "modes";
   type IconType = "monitor" | "wifi";
@@ -72,13 +71,11 @@ function App() {
 
   const handleMenuClick = (menuType: MenuType, icon: IconType) => {
     setSelectedIcon(icon);
-    setNextView(menuType);
     setIsAnimating(true);
 
     // フェードアウト完了後にビューを切り替え、その後フェードイン
     setTimeout(() => {
       setCurrentView(menuType);
-      setNextView(null);
       // 少し遅延してフェードインを開始
       setTimeout(() => {
         setIsAnimating(false);
@@ -87,12 +84,10 @@ function App() {
   };
 
   const handleBack = () => {
-    setNextView("main");
     setIsAnimating(true);
     setTimeout(() => {
       setCurrentView("main");
       setSelectedIcon(null);
-      setNextView(null);
       setTimeout(() => {
         setIsAnimating(false);
       }, 50);
@@ -101,7 +96,7 @@ function App() {
   const handlePageChange = (page: string) => {
     setIsAnimating(true);
     setTimeout(() => {
-      window.location.href = `${page}`;
+      navigate(page);
     }, 300);
   };
 

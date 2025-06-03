@@ -19,7 +19,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Progress } from "@yamada-ui/react";
 import { Alert, AlertIcon, AlertDescription } from "@yamada-ui/react";
 import { useDropzone } from "react-dropzone";
-import { data, Link } from "react-router";
+import { Link } from "react-router";
 
 import { invoke } from "@tauri-apps/api/core";
 import { useParams } from "react-router";
@@ -34,14 +34,6 @@ interface FormData {
 
   autotodayregister: boolean; // オプションとして追加
 }
-
-type Settings = {
-  arrowtoday: boolean;
-  autotodayregister: boolean;
-  soukai: boolean;
-  darkmode: boolean;
-  noList: boolean;
-};
 
 const EventRegistration = () => {
   const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));

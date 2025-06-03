@@ -23,7 +23,6 @@ type Settings = {
 };
 
 import { Card, CardBody, CardFooter } from "@yamada-ui/react";
-import { on } from "events";
 
 function EventPage() {
   const [expectedAttendees, setExpectedAttendees] = useState<Attendee[]>([]);
@@ -583,6 +582,7 @@ function EventPage() {
                   <button
                     onClick={() => {
                       console.log("settings:", settings);
+                      console.log("Expected Attendees:", roomInfo);
                     }}
                     className="ml-4 text-sm text-indigo-600 hover:text-indigo-800"
                   >
