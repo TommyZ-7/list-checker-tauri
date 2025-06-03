@@ -28,6 +28,8 @@ interface FormData {
   eventinfo: string;
   participants: string[];
   arrowtoday: boolean;
+
+  autotodayregister: boolean; // オプションとして追加
 }
 
 const EventRegistration = () => {
@@ -39,6 +41,7 @@ const EventRegistration = () => {
     eventinfo: "",
     participants: [],
     arrowtoday: false,
+    autotodayregister: false,
   });
   const [isFileLoaded, setIsFileLoaded] = useState(false);
   const [uuid, setUuid] = useState("");
@@ -171,8 +174,10 @@ const EventRegistration = () => {
       eventinfo: formData.eventinfo,
       participants: formData.participants,
       arrowtoday: formData.arrowtoday,
+      autotodayregister: formData.autotodayregister,
     });
     const result = await invoke("register_event", { data: sendData });
+    await invoke("debug_run_server");
     setUuid(result as string);
   };
 
@@ -335,6 +340,20 @@ const EventRegistration = () => {
                       >
                         <span>当日参加を許可する</span>
                       </Checkbox>
+                      {formData.arrowtoday && (
+                        <Checkbox
+                          isChecked={formData.autotodayregister}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              autotodayregister: e.target.checked,
+                            })
+                          }
+                          colorScheme="blue"
+                        >
+                          <span>当日参加者を自動登録する</span>
+                        </Checkbox>
+                      )}
                       <Link
                         to="/"
                         className="text-blue-500 hover:underline mt-4 inline-block"

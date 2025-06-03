@@ -14,6 +14,13 @@ type Attendee = {
   id: string;
   attended: boolean;
 };
+
+type Settings = {
+  arrowtoday: boolean;
+  autotodayregister: boolean;
+  darkmode: boolean;
+};
+
 import { Card, CardBody, CardFooter } from "@yamada-ui/react";
 
 function EventPage() {
@@ -24,7 +31,11 @@ function EventPage() {
   const [roomName, setRoomName] = useState<string>("");
   const [roomInfo, setRoomInfo] = useState<string>("");
   const [onTheDay, setOnTheDay] = useState<string[]>([]);
-  const [arrowtoday, setArrowToday] = useState<boolean>(false);
+  const [settings, setSettings] = useState<Settings>({
+    arrowtoday: false,
+    autotodayregister: false,
+    darkmode: false,
+  });
   const isHost =
     useParams<{ isHost: string }>().isHost === "true" ? true : false;
   const domain = useParams<{ domain: string }>().domain || "default";
@@ -45,7 +56,7 @@ function EventPage() {
       return;
     }
     console.log("EventPage mounted with UUID:", uuid);
-    console.log("arrowtoday:", arrowtoday);
+    console.log("arrowtoday:", settings.arrowtoday);
 
     const fetchData = async () => {
       try {
@@ -54,6 +65,7 @@ function EventPage() {
           eventname: string;
           eventinfo: string;
           arrowtoday: boolean;
+          autotodayregister: boolean;
         }>("get_event", { uuid });
         if (response) {
           console.log("Fetched event data:", response);
@@ -67,7 +79,11 @@ function EventPage() {
           expectedAttendeesCopyRef.current = response.participants;
           setRoomName(response.eventname);
           setRoomInfo(response.eventinfo);
-          setArrowToday(response.arrowtoday);
+          setSettings((prev) => ({
+            ...prev,
+            autotodayregister: response.autotodayregister,
+            arrowtoday: response.arrowtoday,
+          }));
           console.log("Data fetched successfully:", response);
 
           // ここでソケットに参加
@@ -127,7 +143,11 @@ function EventPage() {
             );
             setRoomName(data.eventname);
             setRoomInfo(data.eventinfo);
-            setArrowToday(data.arrowtoday);
+            setSettings((prev) => ({
+              ...prev,
+              autotodayregister: data.autotodayregister,
+              arrowtoday: data.arrowtoday,
+            }));
           } else {
             console.error("No data received from socket.");
           }
@@ -256,16 +276,38 @@ function EventPage() {
         });
       }
     } else {
-      // 新規参加者として追加
-      if (onTheDay.includes(attendeeId)) {
-        alert(`${attendeeId} は既に当日参加者に含まれています。`);
+      if (!settings.arrowtoday) {
+        alert(`${attendeeId} は出席者リストに含まれていません。`);
       } else {
-        setOnTheDay((prev) => [...prev, attendeeId]);
-        onTheDayCopyRef.current = [...onTheDayCopyRef.current, attendeeId];
-        socketRef.current.emit("register_ontheday", {
-          ontheday: onTheDayCopyRef.current,
-          uuid: uuid,
-        });
+        // 新規参加者として追加
+        if (onTheDay.includes(attendeeId)) {
+          alert(`${attendeeId} は既に当日参加者に含まれています。`);
+        } else {
+          if (settings.autotodayregister) {
+            setOnTheDay((prev) => [...prev, attendeeId]);
+            onTheDayCopyRef.current = [...onTheDayCopyRef.current, attendeeId];
+            socketRef.current.emit("register_ontheday", {
+              ontheday: onTheDayCopyRef.current,
+              uuid: uuid,
+            });
+          } else {
+            // arrowtodayがfalseの場合の処理
+            const isOk = confirm(
+              `${attendeeId} は当日参加者に含まれていません。登録しますか？`
+            );
+            if (isOk) {
+              setOnTheDay((prev) => [...prev, attendeeId]);
+              onTheDayCopyRef.current = [
+                ...onTheDayCopyRef.current,
+                attendeeId,
+              ];
+              socketRef.current.emit("register_ontheday", {
+                ontheday: onTheDayCopyRef.current,
+                uuid: uuid,
+              });
+            }
+          }
+        }
       }
     }
 
@@ -398,33 +440,36 @@ function EventPage() {
                   </div>
                 </div>
               </div>
-              <div className="bg-emerald-50 w-full rounded-lg p-4 mt-4 animate-fadeIn">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-medium text-emerald-900">その他</h3>
-                </div>
+              {settings.arrowtoday && (
+                <div className="bg-emerald-50 w-full rounded-lg p-4 mt-4 animate-fadeIn">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-medium text-emerald-900">その他</h3>
+                  </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white p-3 rounded-md shadow-sm">
-                    <p className="text-sm text-gray-500">当日参加</p>
-                    <p className="text-2xl font-bold text-emerald-800 text-center">
-                      {onTheDay.length}{" "}
-                      <span className="text-sm font-normal text-gray-500">
-                        人
-                      </span>
-                    </p>
-                  </div>
-                  <div className="bg-white p-3 rounded-md shadow-sm">
-                    <p className="text-sm text-gray-500">合計数</p>
-                    <p className="text-2xl font-bold text-emerald-800 text-center">
-                      {expectedAttendees.filter((attendee) => attendee.attended)
-                        .length + onTheDay.length}{" "}
-                      <span className="text-sm font-normal text-gray-500">
-                        人
-                      </span>
-                    </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white p-3 rounded-md shadow-sm">
+                      <p className="text-sm text-gray-500">当日参加</p>
+                      <p className="text-2xl font-bold text-emerald-800 text-center">
+                        {onTheDay.length}{" "}
+                        <span className="text-sm font-normal text-gray-500">
+                          人
+                        </span>
+                      </p>
+                    </div>
+                    <div className="bg-white p-3 rounded-md shadow-sm">
+                      <p className="text-sm text-gray-500">合計数</p>
+                      <p className="text-2xl font-bold text-emerald-800 text-center">
+                        {expectedAttendees.filter(
+                          (attendee) => attendee.attended
+                        ).length + onTheDay.length}{" "}
+                        <span className="text-sm font-normal text-gray-500">
+                          人
+                        </span>
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </CardBody>
             <CardFooter className="flex justify-end">
               <Text className="text-sm text-gray-500">
