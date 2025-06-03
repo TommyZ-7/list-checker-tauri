@@ -101,7 +101,7 @@ function App() {
   const handlePageChange = (page: string) => {
     setIsAnimating(true);
     setTimeout(() => {
-      window.location.href = `/${page}`;
+      window.location.href = `${page}`;
     }, 300);
   };
 
@@ -181,8 +181,9 @@ function App() {
                     </ul>
                   </div>
                   <Button
-                    as={Link}
-                    to={`/create-room/main/${mode.id}/`}
+                    onClick={() =>
+                      handlePageChange(`/create-room/main/${mode.id}/`)
+                    }
                     className="w-full bg-blue-500 text-white hover:bg-blue-600 transition-colors"
                   >
                     このモードで進む

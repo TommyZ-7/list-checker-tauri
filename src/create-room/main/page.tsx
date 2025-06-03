@@ -62,6 +62,7 @@ const EventRegistration = () => {
   const [uuid, setUuid] = useState("");
   const [domain, setDomain] = useState("");
   const [dataSended, setDataSended] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(true);
 
   const steps = [
     {
@@ -137,6 +138,7 @@ const EventRegistration = () => {
     };
     fetchDomain();
     console.log("ドメイン: ", domain);
+    setIsAnimating(false);
   }, []);
 
   const onDrop = async (files: File[]) => {
@@ -187,12 +189,22 @@ const EventRegistration = () => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
   const nextStep = () => {
+    if (formData.noList && currentStep === 1) {
+      // noListがtrueの場合、参加者リストのステップをスキップ
+      setCurrentStep(currentStep + 2);
+      return;
+    }
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     }
   };
 
   const prevStep = () => {
+    if (formData.noList && currentStep === 3) {
+      // noListがtrueの場合、参加者リストのステップをスキップ
+      setCurrentStep(currentStep - 2);
+      return;
+    }
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
@@ -206,6 +218,9 @@ const EventRegistration = () => {
       return formData.eventinfo.trim() !== "";
     }
     if (currentStep === 2) {
+      if (formData.noList) {
+        return true; // noListがtrueの場合は参加者リストの入力をスキップ
+      }
       return (
         formData.participants.length > 0 &&
         formData.participants[0].trim() !== ""
@@ -255,7 +270,11 @@ const EventRegistration = () => {
   const isLastStep = currentStep === steps.length - 1;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div
+      className={`min-h-screen flex items-center justify-center p-4 transition-all duration-300  ease-in-out ${
+        isAnimating ? "opacity-0 scale-95" : "opacity-100 scale-100"
+      }`}
+    >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
         {/* ヘッダー */}
         <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 text-white">

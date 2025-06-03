@@ -19,11 +19,11 @@ type Settings = {
   arrowtoday: boolean;
   autotodayregister: boolean;
   soukai: boolean;
-  darkmode: boolean;
   noList: boolean;
 };
 
 import { Card, CardBody, CardFooter } from "@yamada-ui/react";
+import { on } from "events";
 
 function EventPage() {
   const [expectedAttendees, setExpectedAttendees] = useState<Attendee[]>([]);
@@ -37,7 +37,6 @@ function EventPage() {
     arrowtoday: false,
     autotodayregister: false,
     soukai: false,
-    darkmode: false,
     noList: false,
   });
   const isHost =
@@ -404,51 +403,46 @@ function EventPage() {
                     <div className="bg-white p-3 rounded-md shadow-sm">
                       <p className="text-sm text-gray-500">委任状数</p>
                       <p className="text-2xl font-bold text-indigo-800 text-center">
-                        {
+                        {expectedAttendees.length -
                           expectedAttendees.filter(
                             (attendee) => attendee.attended
-                          ).length
-                        }{" "}
+                          ).length}{" "}
                         <span className="text-sm font-normal text-gray-500">
-                          / {expectedAttendees.length}人
+                          枚
                         </span>
                       </p>
                     </div>
 
                     <div className="bg-white p-3 rounded-md shadow-sm">
-                      <p className="text-sm text-gray-500">出席率</p>
+                      <p className="text-sm text-gray-500">出席者数</p>
                       <p className="text-2xl font-bold text-indigo-800 text-center">
-                        {Math.round(
-                          (expectedAttendees.filter(
+                        {onTheDay.length +
+                          expectedAttendees.filter(
                             (attendee) => attendee.attended
-                          ).length /
-                            expectedAttendees.length) *
-                            100
-                        )}
+                          ).length}{" "}
                         <span className="text-sm font-normal text-gray-500">
-                          %
+                          名
                         </span>
                       </p>
                     </div>
                   </div>
+                  <div></div>
 
-                  <div className="mt-4 bg-white p-3 rounded-md shadow-sm">
-                    <div className="relative pt-1">
-                      <div className="overflow-hidden h-2 text-xs flex rounded bg-indigo-200">
-                        <div
-                          style={{
-                            width: `${Math.round(
-                              (expectedAttendees.filter(
-                                (attendee) => attendee.attended
-                              ).length /
-                                expectedAttendees.length) *
-                                100
-                            )}%`,
-                          }}
-                          className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-indigo-600 transition-all duration-1000 ease-out"
-                        ></div>
-                      </div>
-                    </div>
+                  <div className="bg-white p-3 rounded-md shadow-sm mt-4">
+                    <p className="text-sm text-gray-500">総数</p>
+                    <p className="text-2xl font-bold text-indigo-800 text-center">
+                      {expectedAttendees.length -
+                        expectedAttendees.filter(
+                          (attendee) => attendee.attended
+                        ).length +
+                        (onTheDay.length +
+                          expectedAttendees.filter(
+                            (attendee) => attendee.attended
+                          ).length)}{" "}
+                      <span className="text-sm font-normal text-gray-500">
+                        名
+                      </span>
+                    </p>
                   </div>
                 </div>
               ) : (
@@ -551,7 +545,7 @@ function EventPage() {
                 <div className="mt-4">
                   <Checkbox
                     className="ml-4"
-                    checked={settings.arrowtoday}
+                    checked={settings.arrowtoday || settings.noList}
                     disabled={settings.noList}
                     onChange={(e) => {
                       if (e.target.checked === false) {
@@ -574,7 +568,7 @@ function EventPage() {
                   <Checkbox
                     className="ml-4"
                     checked={settings.autotodayregister}
-                    disabled={!settings.arrowtoday || settings.noList}
+                    disabled={!settings.arrowtoday}
                     onChange={(e) =>
                       setSettings((prev) => ({
                         ...prev,
@@ -604,79 +598,111 @@ function EventPage() {
         <div>
           <Card className="h-full min-h-[400px] bg-white shadow-lg rounded-xl p-6 animate-fadeInUp animation-delay-400">
             <CardBody>
-              <table className="min-w-full">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      学籍番号
-                    </th>
-
-                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      状態
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {expectedAttendees.map((student) => (
-                    <tr
-                      key={student.id}
-                      id={student.id}
-                      className={cn(
-                        "transition-colors duration-150 animationFlash  m-3",
-                        {
-                          "bg-emerald-100": selectedAttendee === student.id,
-                        }
-                      )}
-                    >
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        <Text fontSize={"3xl"} fontWeight="medium">
-                          {student.id}
-                        </Text>
-                      </td>
-
-                      <td className="py-3 px-4 whitespace-nowrap text-right">
-                        {student.attended ? (
-                          <span className="m-3 justify-center inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-green-100 text-green-800 animate-scaleIn">
-                            <svg
-                              className="mr-1.5 h-4 w-4 text-green-600"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                              xmlns="http://www.w3.org/2000/svg"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="2"
-                                d="M5 13l4 4L19 7"
-                              ></path>
-                            </svg>
-                            出席
-                          </span>
-                        ) : (
-                          <span className="m-3 inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
-                            <svg
-                              className="mr-1.5 h-4 w-4 text-gray-400"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                              xmlns="http://www.w3.org/2000/svg"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="2"
-                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                              ></path>
-                            </svg>
-                            未確認
-                          </span>
-                        )}
-                      </td>
+              {settings.noList ? (
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        学籍番号
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {onTheDay.map((student) => (
+                      <tr
+                        key={student}
+                        id={student}
+                        className={cn(
+                          "transition-colors duration-150 animationFlash  m-3",
+                          {
+                            "bg-emerald-100": selectedAttendee === student,
+                          }
+                        )}
+                      >
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <Text fontSize={"3xl"} fontWeight="medium">
+                            {student}
+                          </Text>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        学籍番号
+                      </th>
+
+                      <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        状態
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {expectedAttendees.map((student) => (
+                      <tr
+                        key={student.id}
+                        id={student.id}
+                        className={cn(
+                          "transition-colors duration-150 animationFlash  m-3",
+                          {
+                            "bg-emerald-100": selectedAttendee === student.id,
+                          }
+                        )}
+                      >
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <Text fontSize={"3xl"} fontWeight="medium">
+                            {student.id}
+                          </Text>
+                        </td>
+
+                        <td className="py-3 px-4 whitespace-nowrap text-right">
+                          {student.attended ? (
+                            <span className="m-3 justify-center inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-green-100 text-green-800 animate-scaleIn">
+                              <svg
+                                className="mr-1.5 h-4 w-4 text-green-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                xmlns="http://www.w3.org/2000/svg"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M5 13l4 4L19 7"
+                                ></path>
+                              </svg>
+                              出席
+                            </span>
+                          ) : (
+                            <span className="m-3 inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                              <svg
+                                className="mr-1.5 h-4 w-4 text-gray-400"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                xmlns="http://www.w3.org/2000/svg"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                ></path>
+                              </svg>
+                              {settings.soukai ? "委任状" : "未出席"}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </CardBody>
           </Card>
         </div>
