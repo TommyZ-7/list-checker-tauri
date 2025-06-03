@@ -19,18 +19,29 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Progress } from "@yamada-ui/react";
 import { Alert, AlertIcon, AlertDescription } from "@yamada-ui/react";
 import { useDropzone } from "react-dropzone";
-import { Link } from "react-router";
+import { data, Link } from "react-router";
 
 import { invoke } from "@tauri-apps/api/core";
+import { useParams } from "react-router";
 
 interface FormData {
   eventname: string;
   eventinfo: string;
   participants: string[];
   arrowtoday: boolean;
+  soukai: boolean; // オプションとして追加
+  noList: boolean; // オプションとして追加
 
   autotodayregister: boolean; // オプションとして追加
 }
+
+type Settings = {
+  arrowtoday: boolean;
+  autotodayregister: boolean;
+  soukai: boolean;
+  darkmode: boolean;
+  noList: boolean;
+};
 
 const EventRegistration = () => {
   const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
@@ -42,10 +53,15 @@ const EventRegistration = () => {
     participants: [],
     arrowtoday: false,
     autotodayregister: false,
+    soukai: false,
+    noList: false,
   });
+  const { mode } = useParams<{ mode: string }>();
+
   const [isFileLoaded, setIsFileLoaded] = useState(false);
   const [uuid, setUuid] = useState("");
   const [domain, setDomain] = useState("");
+  const [dataSended, setDataSended] = useState(false);
 
   const steps = [
     {
@@ -79,6 +95,38 @@ const EventRegistration = () => {
   ];
 
   useEffect(() => {
+    const changeMode = () => {
+      try {
+        if (mode === "soukai") {
+          setFormData((prev) => ({
+            ...prev,
+            soukai: true,
+            arrowtoday: true,
+            autotodayregister: true,
+          }));
+        } else if (mode === "check") {
+          setFormData((prev) => ({
+            ...prev,
+          }));
+        } else if (mode === "all") {
+          setFormData((prev) => ({
+            ...prev,
+            arrowtoday: true,
+          }));
+        } else if (mode === "regist") {
+          setFormData((prev) => ({
+            ...prev,
+            noList: true,
+            arrowtoday: true,
+          }));
+        }
+      } catch (error) {
+        console.error("モードの変更に失敗:", error);
+      }
+    };
+    changeMode();
+    console.log("モード:", formData);
+
     const fetchDomain = async () => {
       try {
         const result = await invoke("get_local_ip");
@@ -88,6 +136,7 @@ const EventRegistration = () => {
       }
     };
     fetchDomain();
+    console.log("ドメイン: ", domain);
   }, []);
 
   const onDrop = async (files: File[]) => {
@@ -169,16 +218,38 @@ const EventRegistration = () => {
   };
 
   const handleSubmit = async () => {
-    const sendData = JSON.stringify({
-      eventname: formData.eventname,
-      eventinfo: formData.eventinfo,
-      participants: formData.participants,
-      arrowtoday: formData.arrowtoday,
-      autotodayregister: formData.autotodayregister,
-    });
-    const result = await invoke("register_event", { data: sendData });
-    await invoke("debug_run_server");
-    setUuid(result as string);
+    if (formData.arrowtoday === false) {
+      const sendData = JSON.stringify({
+        eventname: formData.eventname,
+        eventinfo: formData.eventinfo,
+        participants: formData.participants,
+        arrowtoday: formData.arrowtoday,
+        autotodayregister: false,
+        soukai: formData.soukai,
+        nolist: formData.noList,
+      });
+      console.log("送信データ:", sendData);
+      const result = await invoke("register_event", { data: sendData });
+      await invoke("debug_run_server");
+      setUuid(result as string);
+      setDataSended(true);
+    } else {
+      const sendData = JSON.stringify({
+        eventname: formData.eventname,
+        eventinfo: formData.eventinfo,
+        participants: formData.participants,
+        arrowtoday: formData.arrowtoday,
+        autotodayregister: formData.autotodayregister,
+        soukai: formData.soukai,
+        nolist: formData.noList,
+      });
+      console.log("送信データ:", sendData);
+      const result = await invoke("register_event", { data: sendData });
+      await invoke("debug_run_server");
+      setUuid(result as string);
+      setDataSended(true);
+    }
+    console.log("イベント登録結果:");
   };
 
   const isLastStep = currentStep === steps.length - 1;
@@ -328,45 +399,47 @@ const EventRegistration = () => {
                     </>
                   ) : step.type === "settings" ? (
                     <>
-                      <Checkbox
-                        isChecked={formData.arrowtoday}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            arrowtoday: e.target.checked,
-                          })
-                        }
-                        colorScheme="green"
-                      >
-                        <span>当日参加を許可する</span>
-                      </Checkbox>
-                      {formData.arrowtoday && (
+                      <div>
                         <Checkbox
-                          isChecked={formData.autotodayregister}
-                          onChange={(e) =>
+                          checked={formData.arrowtoday}
+                          disabled={formData.soukai || formData.noList}
+                          onChange={(e) => {
                             setFormData({
                               ...formData,
-                              autotodayregister: e.target.checked,
-                            })
-                          }
-                          colorScheme="blue"
+                              arrowtoday: e.target.checked,
+                            });
+                          }}
+                          colorScheme="green"
                         >
-                          <span>当日参加者を自動登録する</span>
+                          <span>当日参加を許可する</span>
                         </Checkbox>
-                      )}
-                      <Link
-                        to="/"
-                        className="text-blue-500 hover:underline mt-4 inline-block"
-                      >
-                        最初に戻る
-                      </Link>
-                      <p>{uuid}</p>
-                      <Link
-                        to={`/event/${uuid}/true/${domain}:12345`}
-                        className="text-blue-500 hover:underline mt-4 inline-block"
-                      >
-                        イベントページへ
-                      </Link>
+                      </div>
+                      <div>
+                        {formData.arrowtoday && (
+                          <Checkbox
+                            checked={formData.autotodayregister}
+                            disabled={formData.soukai}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                autotodayregister: e.target.checked,
+                              })
+                            }
+                            colorScheme="blue"
+                          >
+                            <span>当日参加者を自動登録する</span>
+                          </Checkbox>
+                        )}
+                      </div>
+
+                      {dataSended ? (
+                        <Link
+                          to={`/event/${uuid}/true/${domain}:12345`}
+                          className="text-blue-500 hover:underline mt-4 inline-block"
+                        >
+                          イベントページへ
+                        </Link>
+                      ) : null}
                     </>
                   ) : null}
                 </div>
@@ -397,12 +470,14 @@ const EventRegistration = () => {
           {isLastStep ? (
             <button
               onClick={handleSubmit}
-              disabled={!canProceed()}
+              disabled={!canProceed() || dataSended}
               className={`flex items-center space-x-2 px-6 py-2 rounded-lg transition-all duration-200 ${
                 canProceed()
                   ? "bg-green-500 text-white hover:bg-green-600"
                   : "bg-gray-300 text-gray-500 cursor-not-allowed"
-              }`}
+              }
+                  ${dataSended ? "cursor-not-allowed opacity-50" : ""}    
+              `}
             >
               <span>登録</span>
             </button>

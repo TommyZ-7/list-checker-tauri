@@ -2,7 +2,7 @@ import "@/App.css";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router";
-import { IconButton } from "@yamada-ui/react";
+import { IconButton, Checkbox } from "@yamada-ui/react";
 import { invoke } from "@tauri-apps/api/core";
 import { Text } from "@yamada-ui/react";
 
@@ -18,7 +18,9 @@ type Attendee = {
 type Settings = {
   arrowtoday: boolean;
   autotodayregister: boolean;
+  soukai: boolean;
   darkmode: boolean;
+  noList: boolean;
 };
 
 import { Card, CardBody, CardFooter } from "@yamada-ui/react";
@@ -34,7 +36,9 @@ function EventPage() {
   const [settings, setSettings] = useState<Settings>({
     arrowtoday: false,
     autotodayregister: false,
+    soukai: false,
     darkmode: false,
+    noList: false,
   });
   const isHost =
     useParams<{ isHost: string }>().isHost === "true" ? true : false;
@@ -66,6 +70,8 @@ function EventPage() {
           eventinfo: string;
           arrowtoday: boolean;
           autotodayregister: boolean;
+          soukai: boolean;
+          nolist: boolean;
         }>("get_event", { uuid });
         if (response) {
           console.log("Fetched event data:", response);
@@ -83,6 +89,8 @@ function EventPage() {
             ...prev,
             autotodayregister: response.autotodayregister,
             arrowtoday: response.arrowtoday,
+            soukai: response.soukai,
+            noList: response.nolist,
           }));
           console.log("Data fetched successfully:", response);
 
@@ -147,6 +155,8 @@ function EventPage() {
               ...prev,
               autotodayregister: data.autotodayregister,
               arrowtoday: data.arrowtoday,
+              soukai: data.soukai,
+              noList: data.nolist,
             }));
           } else {
             console.error("No data received from socket.");
@@ -384,109 +394,208 @@ function EventPage() {
                 </p>
               </div>
               {/* 出席状況サマリー */}
-              <div className="bg-indigo-50 w-full rounded-lg p-4 mt-4 animate-fadeIn">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-medium text-indigo-900">出席状況</h3>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white p-3 rounded-md shadow-sm">
-                    <p className="text-sm text-gray-500">出席者数</p>
-                    <p className="text-2xl font-bold text-indigo-800 text-center">
-                      {
-                        expectedAttendees.filter(
-                          (attendee) => attendee.attended
-                        ).length
-                      }{" "}
-                      <span className="text-sm font-normal text-gray-500">
-                        / {expectedAttendees.length}人
-                      </span>
-                    </p>
-                  </div>
-
-                  <div className="bg-white p-3 rounded-md shadow-sm">
-                    <p className="text-sm text-gray-500">出席率</p>
-                    <p className="text-2xl font-bold text-indigo-800 text-center">
-                      {Math.round(
-                        (expectedAttendees.filter(
-                          (attendee) => attendee.attended
-                        ).length /
-                          expectedAttendees.length) *
-                          100
-                      )}
-                      <span className="text-sm font-normal text-gray-500">
-                        %
-                      </span>
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-4 bg-white p-3 rounded-md shadow-sm">
-                  <div className="relative pt-1">
-                    <div className="overflow-hidden h-2 text-xs flex rounded bg-indigo-200">
-                      <div
-                        style={{
-                          width: `${Math.round(
-                            (expectedAttendees.filter(
-                              (attendee) => attendee.attended
-                            ).length /
-                              expectedAttendees.length) *
-                              100
-                          )}%`,
-                        }}
-                        className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-indigo-600 transition-all duration-1000 ease-out"
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {settings.arrowtoday && (
-                <div className="bg-emerald-50 w-full rounded-lg p-4 mt-4 animate-fadeIn">
+              {settings.soukai ? (
+                <div className="bg-indigo-50 w-full rounded-lg p-4 mt-4 animate-fadeIn">
                   <div className="flex justify-between items-center mb-2">
-                    <h3 className="font-medium text-emerald-900">その他</h3>
+                    <h3 className="font-medium text-indigo-900">出席状況</h3>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-white p-3 rounded-md shadow-sm">
-                      <p className="text-sm text-gray-500">当日参加</p>
-                      <p className="text-2xl font-bold text-emerald-800 text-center">
-                        {onTheDay.length}{" "}
+                      <p className="text-sm text-gray-500">委任状数</p>
+                      <p className="text-2xl font-bold text-indigo-800 text-center">
+                        {
+                          expectedAttendees.filter(
+                            (attendee) => attendee.attended
+                          ).length
+                        }{" "}
                         <span className="text-sm font-normal text-gray-500">
-                          人
+                          / {expectedAttendees.length}人
                         </span>
                       </p>
                     </div>
+
                     <div className="bg-white p-3 rounded-md shadow-sm">
-                      <p className="text-sm text-gray-500">合計数</p>
-                      <p className="text-2xl font-bold text-emerald-800 text-center">
-                        {expectedAttendees.filter(
-                          (attendee) => attendee.attended
-                        ).length + onTheDay.length}{" "}
+                      <p className="text-sm text-gray-500">出席率</p>
+                      <p className="text-2xl font-bold text-indigo-800 text-center">
+                        {Math.round(
+                          (expectedAttendees.filter(
+                            (attendee) => attendee.attended
+                          ).length /
+                            expectedAttendees.length) *
+                            100
+                        )}
                         <span className="text-sm font-normal text-gray-500">
-                          人
+                          %
                         </span>
                       </p>
                     </div>
                   </div>
+
+                  <div className="mt-4 bg-white p-3 rounded-md shadow-sm">
+                    <div className="relative pt-1">
+                      <div className="overflow-hidden h-2 text-xs flex rounded bg-indigo-200">
+                        <div
+                          style={{
+                            width: `${Math.round(
+                              (expectedAttendees.filter(
+                                (attendee) => attendee.attended
+                              ).length /
+                                expectedAttendees.length) *
+                                100
+                            )}%`,
+                          }}
+                          className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-indigo-600 transition-all duration-1000 ease-out"
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
+              ) : (
+                <>
+                  {!settings.noList && (
+                    <div className="bg-indigo-50 w-full rounded-lg p-4 mt-4 animate-fadeIn">
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="font-medium text-indigo-900">
+                          出席状況
+                        </h3>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white p-3 rounded-md shadow-sm">
+                          <p className="text-sm text-gray-500">出席者数</p>
+                          <p className="text-2xl font-bold text-indigo-800 text-center">
+                            {
+                              expectedAttendees.filter(
+                                (attendee) => attendee.attended
+                              ).length
+                            }{" "}
+                            <span className="text-sm font-normal text-gray-500">
+                              / {expectedAttendees.length}人
+                            </span>
+                          </p>
+                        </div>
+
+                        <div className="bg-white p-3 rounded-md shadow-sm">
+                          <p className="text-sm text-gray-500">出席率</p>
+                          <p className="text-2xl font-bold text-indigo-800 text-center">
+                            {Math.round(
+                              (expectedAttendees.filter(
+                                (attendee) => attendee.attended
+                              ).length /
+                                expectedAttendees.length) *
+                                100
+                            )}
+                            <span className="text-sm font-normal text-gray-500">
+                              %
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 bg-white p-3 rounded-md shadow-sm">
+                        <div className="relative pt-1">
+                          <div className="overflow-hidden h-2 text-xs flex rounded bg-indigo-200">
+                            <div
+                              style={{
+                                width: `${Math.round(
+                                  (expectedAttendees.filter(
+                                    (attendee) => attendee.attended
+                                  ).length /
+                                    expectedAttendees.length) *
+                                    100
+                                )}%`,
+                              }}
+                              className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-indigo-600 transition-all duration-1000 ease-out"
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {settings.arrowtoday && (
+                    <div className="bg-emerald-50 w-full rounded-lg p-4 mt-4 animate-fadeIn">
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="font-medium text-emerald-900">その他</h3>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white p-3 rounded-md shadow-sm">
+                          <p className="text-sm text-gray-500">当日参加</p>
+                          <p className="text-2xl font-bold text-emerald-800 text-center">
+                            {onTheDay.length}{" "}
+                            <span className="text-sm font-normal text-gray-500">
+                              人
+                            </span>
+                          </p>
+                        </div>
+                        <div className="bg-white p-3 rounded-md shadow-sm">
+                          <p className="text-sm text-gray-500">合計数</p>
+                          <p className="text-2xl font-bold text-emerald-800 text-center">
+                            {expectedAttendees.filter(
+                              (attendee) => attendee.attended
+                            ).length + onTheDay.length}{" "}
+                            <span className="text-sm font-normal text-gray-500">
+                              人
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </CardBody>
             <CardFooter className="flex justify-end">
-              <Text className="text-sm text-gray-500">
-                {roomInfo || "イベント情報がありません"}
-              </Text>
-              <button
-                className="ml-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors duration-200"
-                onClick={() => {
-                  const compressedData = dataCompression();
-                  console.log("Compressed Data:", compressedData);
-                  console.log(
-                    mergeArrays([0, 3, 5, 7, 8], [1, 3, 4, 6, 8, 10])
-                  );
-                }}
-              >
-                Test
-              </button>
+              <div>
+                <div className="mt-4">
+                  <Checkbox
+                    className="ml-4"
+                    checked={settings.arrowtoday}
+                    disabled={settings.noList}
+                    onChange={(e) => {
+                      if (e.target.checked === false) {
+                        setSettings((prev) => ({
+                          ...prev,
+                          autotodayregister: false,
+                          arrowtoday: false,
+                        }));
+                      }
+                      setSettings((prev) => ({
+                        ...prev,
+                        arrowtoday: e.target.checked,
+                      }));
+                    }}
+                    colorScheme="indigo"
+                    size="md"
+                  >
+                    当日参加を許可
+                  </Checkbox>
+                  <Checkbox
+                    className="ml-4"
+                    checked={settings.autotodayregister}
+                    disabled={!settings.arrowtoday || settings.noList}
+                    onChange={(e) =>
+                      setSettings((prev) => ({
+                        ...prev,
+                        autotodayregister: e.target.checked,
+                      }))
+                    }
+                    colorScheme="indigo"
+                    size="md"
+                  >
+                    当日参加を自動登録
+                  </Checkbox>
+                  <button
+                    onClick={() => {
+                      console.log("settings:", settings);
+                    }}
+                    className="ml-4 text-sm text-indigo-600 hover:text-indigo-800"
+                  >
+                    設定を確認
+                  </button>
+                </div>
+              </div>
             </CardFooter>
           </Card>
         </div>

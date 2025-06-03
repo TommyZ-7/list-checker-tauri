@@ -21,6 +21,7 @@
     "@yamada-ui/table": "^1.3.13",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.15.0",
     "lucide-react": "^0.511.0",
     "react": "^18.3.1",
@@ -28,6 +29,7 @@
     "react-dropzone": "^14.3.8",
     "react-router": "^7.6.1",
     "socket.io-client": "^4.8.1",
+    "styled-components": "^6.1.18",
     "tailwind-merge": "^3.3.0",
     "tailwindcss": "^4.1.8",
     "xlsx": "^0.18.5"

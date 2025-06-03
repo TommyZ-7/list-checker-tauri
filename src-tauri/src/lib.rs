@@ -102,6 +102,8 @@ pub struct Eventstruct {
     participants: Vec<String>,
     arrowtoday: bool,
     autotodayregister: bool,
+    nolist: bool,
+    soukai: bool,
 }
     
 #[tauri::command]

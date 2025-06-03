@@ -20,7 +20,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
 
             <Route path="create-room">
               <Route index element={<CreateRoom />} />
-              <Route path="main" element={<CreateRoomMain />} />
+              <Route path="main/:mode" element={<CreateRoomMain />} />
             </Route>
 
             <Route path="join-room" element={<JoinRoom />} />
