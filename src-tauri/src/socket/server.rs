@@ -4,8 +4,9 @@ use tower_http::cors::CorsLayer;
 use crate::get_app_state;
 use crate::get_app_state2;
 use crate::get_app_state3;
+use crate::get_app_state4;
 use local_ip_address::local_ip;
-use serde::{Deserialize, Serialize};
+use serde::{ Deserialize, Serialize};
 
 
 
@@ -146,6 +147,43 @@ async fn register_ontheday(socket: SocketRef, Data(data): Data<OnTheDayData>) {
     }
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+struct SettingsData {
+    arrowtoday: bool,
+    autotodayregister: bool,
+    uuid: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+struct SettingsChangeData{
+    arrowtoday: bool,
+    autotodayregister: bool,
+}
+
+
+
+async fn settings_change(socket: SocketRef, Data(data): Data<SettingsData>) {
+    // ここに設定変更のロジックを実装
+    println!("Settings changed: {:?}", data);
+
+    let app_state = get_app_state4();
+    let key = data.uuid.clone() + ":settings";
+
+    let arrow = data.arrowtoday;
+    let auto = data.autotodayregister;
+
+    let return_data = crate::Settings {
+        arrowtoday: arrow,
+        autotodayregister: auto,
+    };
+
+    app_state.insert(key.clone(), return_data.clone());
+
+    if let Err(e) = socket.broadcast().emit("settings_change_return", &return_data).await {
+        eprintln!("Failed to send settings change data: {}", e);
+    }
+}
+
 
 pub async fn start_socketio_server(port: u16) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let (layer, io) = SocketIo::new_layer();
@@ -164,6 +202,7 @@ pub async fn start_socketio_server(port: u16) -> Result<(), Box<dyn std::error::
         s.on("register_today" , register_today);
         s.on("register_attendees", register_attendees);
         s.on("register_ontheday" , register_ontheday);
+        s.on("settings_change", settings_change);
     });
 
     // Create the app with CORS and Socket.IO layers

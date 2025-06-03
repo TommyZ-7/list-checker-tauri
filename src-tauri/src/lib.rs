@@ -23,6 +23,10 @@ pub struct AppState3 {
     store: Mutex<HashMap<String, Vec<String>>>,
 }
 
+pub struct AppState4 {
+    store: Mutex<HashMap<String, Settings>>,
+}
+
 impl AppState {
     pub fn new() -> Self {
         Self::default()
@@ -76,10 +80,28 @@ impl AppState3 {
     }
 }
 
+impl AppState4 {
+    pub fn new() -> Self {
+        Self {
+            store: Mutex::new(HashMap::new()),
+        }
+    }
+    
+    pub fn insert(&self, key: String, value: Settings) {
+        let mut store = self.store.lock().unwrap();
+        store.insert(key, value);
+    }
+    
+    pub fn get(&self, key: &str) -> Option<Settings> {
+        let store = self.store.lock().unwrap();
+        store.get(key).cloned()
+    }
+}
+
 static APP_STATE: OnceLock<Arc<AppState>> = OnceLock::new();
 static APP_STATE2: OnceLock<Arc<AppState2>> = OnceLock::new();
 static APP_STATE3: OnceLock<Arc<AppState3>> = OnceLock::new();
-
+static APP_STATE4: OnceLock<Arc<AppState4>> = OnceLock::new();
 
 pub fn get_app_state() -> Arc<AppState> {
     APP_STATE.get_or_init(|| Arc::new(AppState::new())).clone()
@@ -92,8 +114,15 @@ pub fn get_app_state3() -> Arc<AppState3> {
     APP_STATE3.get_or_init(|| Arc::new(AppState3::new())).clone()
 }
 
+pub fn get_app_state4() -> Arc<AppState4> {
+    APP_STATE4.get_or_init(|| Arc::new(AppState4::new())).clone()
+}
 
-
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Settings {
+    arrowtoday: bool,
+    autotodayregister: bool,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Eventstruct {

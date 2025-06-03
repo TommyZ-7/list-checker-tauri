@@ -6,7 +6,7 @@ import { IconButton, Checkbox } from "@yamada-ui/react";
 import { invoke } from "@tauri-apps/api/core";
 import { Text } from "@yamada-ui/react";
 
-import { Check } from "lucide-react";
+import { Check, Settings } from "lucide-react";
 
 import { io } from "socket.io-client";
 
@@ -20,6 +20,11 @@ type Settings = {
   autotodayregister: boolean;
   soukai: boolean;
   noList: boolean;
+};
+
+type settingsReturn = {
+  arrowtoday: boolean;
+  autotodayregister: boolean;
 };
 
 import { Card, CardBody, CardFooter } from "@yamada-ui/react";
@@ -38,6 +43,7 @@ function EventPage() {
     soukai: false,
     noList: false,
   });
+  const settingsRef = useRef<Settings>(settings);
   const isHost =
     useParams<{ isHost: string }>().isHost === "true" ? true : false;
   const domain = useParams<{ domain: string }>().domain || "default";
@@ -90,6 +96,12 @@ function EventPage() {
             soukai: response.soukai,
             noList: response.nolist,
           }));
+          settingsRef.current = {
+            autotodayregister: response.autotodayregister,
+            arrowtoday: response.arrowtoday,
+            soukai: response.soukai,
+            noList: response.nolist,
+          };
           console.log("Data fetched successfully:", response);
 
           // ここでソケットに参加
@@ -114,6 +126,19 @@ function EventPage() {
               console.error("No on the day data received.");
             }
           });
+
+          socketRef.current.on(
+            "settings_change_return",
+            (data: settingsReturn) => {
+              console.log("Settings change data received from server:", data);
+              if (data) {
+                // 受信した設定データを処理
+                receiveSettingsChange(data);
+              } else {
+                console.error("No settings change data received.");
+              }
+            }
+          );
 
           return () => {
             if (socketRef.current) {
@@ -156,6 +181,12 @@ function EventPage() {
               soukai: data.soukai,
               noList: data.nolist,
             }));
+            settingsRef.current = {
+              autotodayregister: data.autotodayregister,
+              arrowtoday: data.arrowtoday,
+              soukai: data.soukai,
+              noList: data.nolist,
+            };
           } else {
             console.error("No data received from socket.");
           }
@@ -178,6 +209,19 @@ function EventPage() {
             console.error("No on the day data received.");
           }
         });
+
+        socketRef.current.on(
+          "settings_change_return",
+          (data: settingsReturn) => {
+            console.log("Settings change data received from server:", data);
+            if (data) {
+              // 受信した設定データを処理
+              receiveSettingsChange(data);
+            } else {
+              console.error("No settings change data received.");
+            }
+          }
+        );
 
         socketRef.current.emit("join", uuid);
 
@@ -242,6 +286,21 @@ function EventPage() {
     console.log("Merged on the day IDs:", mergedOnTheDay);
     setOnTheDay(mergedOnTheDay);
     onTheDayCopyRef.current = mergedOnTheDay;
+  };
+
+  const receiveSettingsChange = (settings_data: settingsReturn) => {
+    console.log("Received settings change data:", settings_data);
+    setSettings((prev) => ({
+      ...prev,
+      arrowtoday: settings_data.arrowtoday,
+      autotodayregister: settings_data.autotodayregister,
+    }));
+    settingsRef.current = {
+      ...settingsRef.current,
+      arrowtoday: settings_data.arrowtoday,
+      autotodayregister: settings_data.autotodayregister,
+    };
+    console.log("Updated settings:", settingsRef.current);
   };
 
   const dataDeCompression = (compressedData: number[]) => {
@@ -321,6 +380,16 @@ function EventPage() {
 
     // 入力フィールドにフォーカスを戻す
     inputRef.current?.focus();
+  };
+
+  const handleSettingsChange = (settings_data: Settings) => {
+    // 設定変更の処理をここに実装
+    console.log("Settings changed:", settings_data);
+    socketRef.current.emit("settings_change", {
+      arrowtoday: settings_data.arrowtoday,
+      autotodayregister: settings_data.autotodayregister,
+      uuid: uuid,
+    });
   };
 
   interface KeyDownEvent extends React.KeyboardEvent<HTMLInputElement> {}
@@ -553,11 +622,26 @@ function EventPage() {
                           autotodayregister: false,
                           arrowtoday: false,
                         }));
+                        settingsRef.current = {
+                          autotodayregister: false,
+                          arrowtoday: false,
+                          soukai: settings.soukai,
+                          noList: settings.noList,
+                        };
+                        console.log(settingsRef.current);
+                        handleSettingsChange(settingsRef.current);
+                        return;
                       }
                       setSettings((prev) => ({
                         ...prev,
                         arrowtoday: e.target.checked,
                       }));
+                      settingsRef.current = {
+                        ...settingsRef.current,
+                        arrowtoday: e.target.checked,
+                      };
+                      console.log(settingsRef.current);
+                      handleSettingsChange(settingsRef.current);
                     }}
                     colorScheme="indigo"
                     size="md"
@@ -568,12 +652,18 @@ function EventPage() {
                     className="ml-4"
                     checked={settings.autotodayregister}
                     disabled={!settings.arrowtoday}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setSettings((prev) => ({
                         ...prev,
                         autotodayregister: e.target.checked,
-                      }))
-                    }
+                      }));
+                      settingsRef.current = {
+                        ...settingsRef.current,
+                        autotodayregister: e.target.checked,
+                      };
+                      console.log(settingsRef.current);
+                      handleSettingsChange(settingsRef.current);
+                    }}
                     colorScheme="indigo"
                     size="md"
                   >
