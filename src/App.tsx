@@ -383,7 +383,7 @@ function App() {
 
       {/* 戻るボタン */}
       {currentView !== "main" && (
-        <div className="fixed top-4 left-4 z-10">
+        <div className="fixed top-4 left-4 z-10 bg-white">
           <button
             onClick={handleBack}
             className="flex items-center space-x-2 bg-white p-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 "

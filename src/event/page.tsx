@@ -5,8 +5,20 @@ import { useParams } from "react-router";
 import { IconButton, Checkbox } from "@yamada-ui/react";
 import { invoke } from "@tauri-apps/api/core";
 import { Text } from "@yamada-ui/react";
+import { Button } from "@yamada-ui/react";
 
-import { Check, Settings } from "lucide-react";
+import {
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  MenuGroup,
+  MenuOptionItem,
+  MenuOptionGroup,
+  MenuSeparator,
+} from "@yamada-ui/react"
+
+import { Check, Settings, AlignJustify } from "lucide-react";
 
 import { io } from "socket.io-client";
 
@@ -416,6 +428,17 @@ function EventPage() {
           >
             {roomName}
           </Text>
+         <Menu>
+  <MenuButton as={Button} rightIcon={<AlignJustify className="w-6 h-6 text-gray-500" />}>
+    Menu
+  </MenuButton>
+
+  <MenuList>
+    <MenuItem>Set status</MenuItem>
+    <MenuItem>Edit Profile</MenuItem>
+    <MenuItem>Preferences</MenuItem>
+  </MenuList>
+</Menu>
         </div>
       </header>
 
