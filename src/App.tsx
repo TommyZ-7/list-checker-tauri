@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { Button } from "@yamada-ui/react";
+import { invoke } from "@tauri-apps/api/core";
 
 type serverInfo = {
   domain: string;
@@ -30,10 +31,11 @@ function App() {
     port: 12345,
     uuid: "",
   });
+  const [jsonToUuid, setJsonToUuid] = useState<string>("");
 
   const navigate = useNavigate();
 
-  type MenuType = "main" | "event" | "join" | "modes";
+  type MenuType = "main" | "event" | "join" | "modes" | "loadJson";
   type IconType = "monitor" | "wifi";
 
   const modes = [
@@ -109,6 +111,108 @@ function App() {
     setTimeout(() => {
       navigate(page);
     }, 300);
+  };
+
+  const handleLoadJson = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const parsedData = JSON.parse(e.target?.result as string);
+          console.log("Loaded JSON data:", parsedData);
+          // JSONデータを処理するロジックをここに追加
+          // ここで必要な処理を行う
+          // 次の形式のJSONデータを想定しています
+          // {"attendees":[{"id":"122D086","attended":true},{"id":"122D093","attended":false},{"id":"122D212","attended":true},{"id":"122D084","attended":false},{"id":"121A121","attended":false},{"id":"122D342","attended":false},{"id":"122H213","attended":false},{"id":"111V434","attended":false},{"id":"123S234","attended":false},{"id":"122J343","attended":false},{"id":"124G463","attended":false},{"id":"275H456","attended":false},{"id":"132G467","attended":false},{"id":"235T324","attended":false},{"id":"242G234","attended":false},{"id":"236F252","attended":false},{"id":"654F675","attended":false},{"id":"654G542","attended":false},{"id":"333F444","attended":false},{"id":"111D111","attended":false},{"id":"566F555","attended":false}],"today":[{"id":"tttt"},{"id":"weq3"}],"roomSettings":{"eventname":"14343","eventinfo":"3434","arrowtoday":true,"autotodayregister":true,"soukai":false,"nolist":false}}
+          // 入力形式はinputのtype="file"で読み込んだJSONファイルを想定しています
+
+          console.log("Parsed JSON Data:", parsedData);
+
+          const sendData = JSON.stringify({
+            eventname: parsedData.roomSettings.eventname,
+            eventinfo: parsedData.roomSettings.eventinfo,
+            participants: parsedData.attendees.map(
+              (attendee: any) => attendee.id
+            ),
+            arrowtoday: parsedData.roomSettings.arrowtoday,
+            autotodayregister: parsedData.roomSettings.autotodayregister,
+            soukai: parsedData.roomSettings.soukai,
+            nolist: parsedData.roomSettings.nolist,
+          });
+          let count = 0;
+          const sendAttendees = [];
+          for (const attendee of parsedData.attendees) {
+            if (attendee.attended) {
+              sendAttendees.push(count);
+            }
+            count++;
+          }
+          console.log("参加者のID:", sendAttendees);
+          const sendToday = parsedData.today.map(
+            (attendee: any) => attendee.id
+          );
+
+          console.log("送信するデータ:", {
+            info: sendData,
+            attendees: sendAttendees,
+            today: sendToday,
+          });
+
+          const result1 = await invoke("register_event", { data: sendData });
+          console.log("登録イベントのUUID:", result1 as string);
+          setJsonToUuid(result1 as string);
+          const result2 = await invoke("json_to_attendees", {
+            data: {
+              attendeeindex: sendAttendees,
+              uuid: result1 as string,
+            },
+          });
+          const result3 = await invoke("json_to_today", {
+            data: {
+              today: sendToday,
+              uuid: result1 as string,
+            },
+          });
+          invoke("debug_run_server");
+
+          console.log("イベント登録結果:", result1);
+          console.log("参加者登録結果:", result2);
+          console.log("本日参加者登録結果:", result3);
+        } catch (error) {
+          console.error("無効なJSONファイル:", error);
+          alert("無効なJSONファイルです");
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const renderLoadJsonMenu = () => {
+    return (
+      <div
+        className={`min-h-screen  p-6 transition-all duration-300 ease-in-out ${
+          isAnimating ? "opacity-0 scale-95" : "opacity-100 scale-100"
+        }`}
+      >
+        <div className="justify-center items-center text-center">
+          <input type="file" accept=".json" onChange={handleLoadJson} />
+          <div className="text-center mt-4">
+            <p className="text-gray-600">
+              JSONファイルを選択して、イベントデータを読み込みます。
+            </p>
+            {jsonToUuid && (
+              <>
+                <p className="text-blue-600 mt-2">
+                  読み込み完了！ルームID: {jsonToUuid}
+                </p>
+                {/* 読み込んだデータをモダンなuiで表示する */}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const renderModeSelector = () => (
@@ -228,17 +332,17 @@ function App() {
               </div>
             </div>
           </button>
-
-          <div className="flex items-center p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer">
-            <FileJson className="w-8 h-8 text-green-500 mr-4" />
-            <div>
-              <h3 className="font-semibold">ファイルからインポート</h3>
-              <p className="text-sm text-gray-600">
-                ファイルからイベントを読み込みます
-              </p>
+          <button onClick={() => handleMenuClick("loadJson", "monitor")}>
+            <div className="flex items-center p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer">
+              <FileJson className="w-8 h-8 text-green-500 mr-4" />
+              <div>
+                <h3 className="font-semibold">ファイルからインポート</h3>
+                <p className="text-sm text-gray-600">
+                  ファイルからイベントを読み込みます
+                </p>
+              </div>
             </div>
-          </div>
-
+          </button>
           <div className="flex items-center p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer">
             <Share2 className="w-8 h-8 text-purple-500 mr-4" />
             <div>
@@ -403,6 +507,7 @@ function App() {
         {currentView === "event" && renderEventMenu()}
         {currentView === "join" && renderJoinMenu()}
         {currentView === "modes" && renderModeSelector()}
+        {currentView === "loadJson" && renderLoadJsonMenu()}
       </div>
     </main>
   );

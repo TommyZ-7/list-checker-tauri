@@ -237,9 +237,11 @@ const EventRegistration = () => {
       });
       console.log("送信データ:", sendData);
       const result = await invoke("register_event", { data: sendData });
-      await invoke("debug_run_server");
-      await setUuid(result as string);
-      await setDataSended(true);
+      setTimeout(() => {
+        invoke("debug_run_server");
+        setUuid(result as string);
+        setDataSended(true);
+      }, 1000);
     } else {
       const sendData = JSON.stringify({
         eventname: formData.eventname,
@@ -252,9 +254,11 @@ const EventRegistration = () => {
       });
       console.log("送信データ:", sendData);
       const result = await invoke("register_event", { data: sendData });
-      await invoke("debug_run_server");
-      await setUuid(result as string);
-      await setDataSended(true);
+      setTimeout(() => {
+        invoke("debug_run_server");
+        setUuid(result as string);
+        setDataSended(true);
+      }, 1000);
     }
     console.log("イベント登録結果:");
   };

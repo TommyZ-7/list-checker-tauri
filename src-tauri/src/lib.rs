@@ -161,6 +161,54 @@ fn register_event(data: String) -> String {
     uuid
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct json_to_attendees_Struct {
+    attendeeindex: Vec<i32>,
+    uuid: String,
+}
+
+#[tauri::command]
+fn json_to_attendees(data: json_to_attendees_Struct) -> String {
+    println!("Received register_attendees: {:?}", data);
+    let app_state = get_app_state2();
+    let key = format!("{}:attendees", data.uuid);
+
+    //既存のデータは取得しない
+    let result = app_state.insert(key.clone(), data.attendeeindex.clone());
+
+    
+    println!("Updated attendees for {}: {:?}", data.uuid, data.attendeeindex);
+
+    // 参加者の情報をクライアントに送信
+    let json = serde_json::to_string(&data).unwrap();
+    json
+}
+
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct json_to_today_Struct {
+    uuid: String,
+    today: Vec<String>,
+}
+
+#[tauri::command]
+fn json_to_today(data: json_to_today_Struct) -> String {
+    println!("Received register_today: {:?}", data);
+    let app_state = get_app_state3();
+    let key =  format!("{}:today", data.uuid);
+
+    //既存のデータは取得しない
+    let result = app_state.insert(key.clone(), data.today.clone());
+    println!("Updated today for {}: {:?}", data.uuid, data.today);
+    // 今日の情報をクライアントに送信
+    let json = serde_json::to_string(&data).unwrap();
+    json
+}
+
+
+
+
+
 #[tauri::command]
 fn get_event(uuid: String, ) -> Option<Eventstruct> {
     let app_state = get_app_state();
@@ -252,7 +300,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
-            register_event, debug_hashmap, get_event, debug_run_server, register_attendees, get_local_ip
+            register_event, debug_hashmap, get_event, debug_run_server, register_attendees, get_local_ip , json_to_attendees, json_to_today
             ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
