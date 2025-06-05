@@ -7,20 +7,26 @@ import { invoke } from "@tauri-apps/api/core";
 import { Text } from "@yamada-ui/react";
 import { Button } from "@yamada-ui/react";
 
+import Papa from "papaparse";
+
 import {
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  MenuGroup,
-  MenuOptionItem,
-  MenuOptionGroup,
-  MenuSeparator,
-} from "@yamada-ui/react"
+  Drawer,
+  DrawerOverlay,
+  DrawerCloseButton,
+  DrawerHeader,
+  DrawerBody,
+  DrawerFooter,
+  useDisclosure,
+} from "@yamada-ui/react";
+
+import { Tabs, TabList, Tab, TabPanels, TabPanel } from "@yamada-ui/react";
+
+import { Card, CardHeader, CardBody, CardFooter } from "@yamada-ui/react";
 
 import { Check, Settings, AlignJustify } from "lucide-react";
 
 import { io } from "socket.io-client";
+import * as XLSX from "xlsx";
 
 type Attendee = {
   id: string;
@@ -39,8 +45,6 @@ type settingsReturn = {
   autotodayregister: boolean;
 };
 
-import { Card, CardBody, CardFooter } from "@yamada-ui/react";
-
 function EventPage() {
   const [expectedAttendees, setExpectedAttendees] = useState<Attendee[]>([]);
   const [newAttendee, setNewAttendee] = useState<string>("");
@@ -56,6 +60,7 @@ function EventPage() {
     noList: false,
   });
   const settingsRef = useRef<Settings>(settings);
+  const [downloadType, setDownloadType] = useState<number>(0);
   const isHost =
     useParams<{ isHost: string }>().isHost === "true" ? true : false;
   const domain = useParams<{ domain: string }>().domain || "default";
@@ -65,6 +70,8 @@ function EventPage() {
 
   const { uuid } = useParams<{ uuid: string }>();
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const { open, onOpen, onClose } = useDisclosure();
 
   useEffect(() => {
     if (!uuid) {
@@ -415,6 +422,139 @@ function EventPage() {
     }
   };
 
+  const downloadexcel = () => {
+    if (expectedAttendees.length === 0) {
+      alert("出席者がいません。");
+      return;
+    }
+
+    if (downloadType === 0) {
+      const data = expectedAttendees.map((attendee) => ({
+        学籍番号: attendee.id,
+        出席: attendee.attended ? "O" : "",
+      }));
+      const dataToday = onTheDay.map((attendee) => ({
+        学籍番号: attendee,
+      }));
+      const dataStatistics = {
+        出席者数: expectedAttendees.filter((attendee) => attendee.attended)
+          .length,
+        出席率:
+          Math.round(
+            (expectedAttendees.filter((attendee) => attendee.attended).length /
+              expectedAttendees.length) *
+              100
+          ) + "%",
+
+        当日参加者数: onTheDay.length,
+        合計数:
+          expectedAttendees.filter((attendee) => attendee.attended).length +
+          onTheDay.length,
+      };
+
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const worksheetToday = XLSX.utils.json_to_sheet(dataToday);
+      const worksheetStatistics = XLSX.utils.json_to_sheet([dataStatistics]);
+      XLSX.utils.book_append_sheet(workbook, worksheet, "出席者リスト");
+      XLSX.utils.book_append_sheet(workbook, worksheetToday, "当日参加者");
+      XLSX.utils.book_append_sheet(workbook, worksheetStatistics, "統計情報");
+      const fileName = `${roomName}_出席者リスト.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+    } else if (downloadType === 1) {
+      const csvData = expectedAttendees.map((attendee) => ({
+        学籍番号: attendee.id,
+        出席: attendee.attended ? "O" : "",
+      }));
+      const csvDataToday = onTheDay.map((attendee) => ({
+        学籍番号: attendee,
+      }));
+      const csvDataStatistics = {
+        出席者数: expectedAttendees.filter((attendee) => attendee.attended)
+          .length,
+        出席率:
+          Math.round(
+            (expectedAttendees.filter((attendee) => attendee.attended).length /
+              expectedAttendees.length) *
+              100
+          ) + "%",
+
+        当日参加者数: onTheDay.length,
+        合計数:
+          expectedAttendees.filter((attendee) => attendee.attended).length +
+          onTheDay.length,
+      };
+      const csv = Papa.unparse({
+        fields: ["学籍番号", "出席"],
+        data: csvData,
+      });
+      const csvToday = Papa.unparse({
+        fields: ["学籍番号"],
+        data: csvDataToday,
+      });
+      const csvStatistics = Papa.unparse({
+        fields: ["出席者数", "出席率", "当日参加者数", "合計数"],
+        data: [csvDataStatistics],
+      });
+      const csvHeader = `イベント名,${roomName}\nイベント情報,${roomInfo}\n\n`;
+      const csvFooter = `\n\n出席者リスト\n${csv}\n\n当日参加者リスト\n${csvToday}\n\n統計情報\n${csvStatistics}`;
+      const fileName = `${roomName}_出席者リスト.csv`;
+      const blob = new Blob([csvHeader + csvFooter], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      console.log("CSV file downloaded:", fileName);
+    } else if (downloadType === 2) {
+      const jsonData = expectedAttendees.map((attendee) => ({
+        id: attendee.id,
+        attended: attendee.attended,
+      }));
+      const jsonDataToday = onTheDay.map((attendee) => ({
+        id: attendee,
+      }));
+
+      const roomSettings = {
+        eventname: roomName,
+        eventinfo: roomInfo,
+        arrowtoday: settings.arrowtoday,
+        autotodayregister: settings.autotodayregister,
+        soukai: settings.soukai,
+        nolist: settings.noList,
+      };
+
+      const fileName = `${roomName}_出席者リスト.json`;
+      const blob = new Blob(
+        [
+          JSON.stringify({
+            attendees: jsonData,
+            today: jsonDataToday,
+            roomSettings: roomSettings,
+          }),
+        ],
+        { type: "application/json" }
+      );
+      downloadBlob(blob, fileName);
+      function downloadBlob(blob: Blob, fileName: string) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        console.log("JSON file downloaded:", fileName);
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen custom_font">
       {/* ヘッダー */}
@@ -428,17 +568,12 @@ function EventPage() {
           >
             {roomName}
           </Text>
-         <Menu>
-  <MenuButton as={Button} rightIcon={<AlignJustify className="w-6 h-6 text-gray-500" />}>
-    Menu
-  </MenuButton>
-
-  <MenuList>
-    <MenuItem>Set status</MenuItem>
-    <MenuItem>Edit Profile</MenuItem>
-    <MenuItem>Preferences</MenuItem>
-  </MenuList>
-</Menu>
+          <Button
+            rightIcon={<AlignJustify className="w-6 h-6 text-gray-500" />}
+            onClick={onOpen}
+          >
+            Menu
+          </Button>
         </div>
       </header>
 
@@ -821,6 +956,150 @@ function EventPage() {
           </Card>
         </div>
       </div>
+      <Drawer open={open} onClose={onClose}>
+        <DrawerOverlay bg="blackAlpha.300" backdropFilter="blur(10px)" />
+
+        <DrawerHeader>設定</DrawerHeader>
+
+        <DrawerBody>
+          <Card variant={"outline"} className="mb-4 w-full">
+            <CardHeader>
+              <Text fontSize={"2xl"} fontWeight="bold">
+                ダウンロード
+              </Text>
+            </CardHeader>
+            <CardBody>
+              <Tabs
+                variant="sticky"
+                fitted
+                index={downloadType}
+                onChange={(index) => setDownloadType(index)}
+              >
+                <Tab>Excel</Tab>
+                <Tab>CSV</Tab>
+                <Tab>JSON</Tab>
+                <TabPanel>
+                  <Text fontSize={"lg"} fontWeight="bold">
+                    Excel形式でダウンロードします。microsoft Excelや Google
+                    Sheetsで開くことができます。
+                  </Text>
+                </TabPanel>
+                <TabPanel>
+                  <Text fontSize={"lg"} fontWeight="bold">
+                    CSV形式でダウンロードします。様々なアプリケーションで開くことができます。
+                  </Text>
+                </TabPanel>
+                <TabPanel>
+                  <Text fontSize={"lg"} fontWeight="bold">
+                    JSON形式でダウンロードします。本ソフトのビューワーで開くことができるほか、現在の状態を復元することもできます。
+                  </Text>
+                </TabPanel>
+              </Tabs>
+              <Button
+                colorScheme="primary"
+                onClick={downloadexcel}
+                className="w-full"
+              >
+                出席者リストをダウンロード
+              </Button>
+            </CardBody>
+          </Card>
+          <Card variant={"outline"} className="mb-4 w-full">
+            <CardHeader>
+              <Text fontSize={"2xl"} fontWeight="bold">
+                設定
+              </Text>
+            </CardHeader>
+            <CardBody>
+              <Checkbox
+                className="mb-4"
+                checked={settings.arrowtoday || settings.noList}
+                disabled={settings.noList}
+                onChange={(e) => {
+                  if (e.target.checked === false) {
+                    setSettings((prev) => ({
+                      ...prev,
+                      autotodayregister: false,
+                      arrowtoday: false,
+                    }));
+                    settingsRef.current = {
+                      autotodayregister: false,
+                      arrowtoday: false,
+                      soukai: settings.soukai,
+                      noList: settings.noList,
+                    };
+                    console.log(settingsRef.current);
+                    handleSettingsChange(settingsRef.current);
+                    return;
+                  }
+                  setSettings((prev) => ({
+                    ...prev,
+                    arrowtoday: e.target.checked,
+                  }));
+                  settingsRef.current = {
+                    ...settingsRef.current,
+                    arrowtoday: e.target.checked,
+                  };
+                  console.log(settingsRef.current);
+                  handleSettingsChange(settingsRef.current);
+                }}
+                colorScheme="indigo"
+                size="md"
+              >
+                当日参加を許可
+              </Checkbox>
+              <Checkbox
+                className="mb-4"
+                checked={settings.autotodayregister}
+                disabled={!settings.arrowtoday}
+                onChange={(e) => {
+                  setSettings((prev) => ({
+                    ...prev,
+                    autotodayregister: e.target.checked,
+                  }));
+                  settingsRef.current = {
+                    ...settingsRef.current,
+                    autotodayregister: e.target.checked,
+                  };
+                  console.log(settingsRef.current);
+                  handleSettingsChange(settingsRef.current);
+                }}
+                colorScheme="indigo"
+                size="md"
+              >
+                当日参加を自動登録
+              </Checkbox>
+              <Checkbox
+                className="mb-4"
+                checked={settings.soukai}
+                onChange={(e) => {
+                  setSettings((prev) => ({
+                    ...prev,
+                    soukai: e.target.checked,
+                  }));
+                  settingsRef.current = {
+                    ...settingsRef.current,
+                    soukai: e.target.checked,
+                  };
+                  console.log(settingsRef.current);
+                  handleSettingsChange(settingsRef.current);
+                }}
+                colorScheme="indigo"
+                size="md"
+              >
+                総会モード
+              </Checkbox>
+            </CardBody>
+          </Card>
+        </DrawerBody>
+
+        <DrawerFooter>
+          <Button variant="ghost" onClick={onClose}>
+            とじる
+          </Button>
+          <Button colorScheme="primary">Wikipedia</Button>
+        </DrawerFooter>
+      </Drawer>
     </div>
   );
 }
