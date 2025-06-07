@@ -22,6 +22,48 @@ type serverInfo = {
   uuid: string;
 };
 
+type parsedJsonData = {
+  attendees: { id: string; attended: boolean }[];
+  today: { id: string }[];
+  roomSettings: {
+    eventname: string;
+    eventinfo: string;
+    arrowtoday: boolean;
+    autotodayregister: boolean;
+    soukai: boolean;
+    nolist: boolean;
+  };
+};
+
+// A badge for displaying attendance status
+const StatusBadge = ({ attended }: { attended: boolean }) => (
+  <span
+    className={`px-3 py-1 text-xs font-semibold rounded-full ${
+      attended ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+    }`}
+  >
+    {attended ? "出席" : "欠席"}
+  </span>
+);
+
+// A card for displaying information sections
+const InfoCard = ({
+  title,
+  children,
+  className = "",
+}: {
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+}) => (
+  <div className={`bg-white rounded-xl shadow-md overflow-hidden ${className}`}>
+    <div className="p-6">
+      <h2 className="text-xl font-bold text-gray-800 mb-4">{title}</h2>
+      {children}
+    </div>
+  </div>
+);
+
 function App() {
   const [currentView, setCurrentView] = useState("main");
   const [selectedIcon, setSelectedIcon] = useState<IconType | null>(null);
@@ -30,6 +72,18 @@ function App() {
     domain: "",
     port: 12345,
     uuid: "",
+  });
+  const [jsonData, setJsonData] = useState<parsedJsonData>({
+    attendees: [],
+    today: [],
+    roomSettings: {
+      eventname: "",
+      eventinfo: "",
+      arrowtoday: false,
+      autotodayregister: false,
+      soukai: false,
+      nolist: false,
+    },
   });
   const [jsonToUuid, setJsonToUuid] = useState<string>("");
 
@@ -159,6 +213,12 @@ function App() {
             today: sendToday,
           });
 
+          setJsonData((prev) => ({
+            ...prev,
+            attendees: parsedData.attendees,
+            today: parsedData.today,
+            roomSettings: parsedData.roomSettings,
+          }));
           const result1 = await invoke("register_event", { data: sendData });
           console.log("登録イベントのUUID:", result1 as string);
           setJsonToUuid(result1 as string);
@@ -202,13 +262,187 @@ function App() {
               JSONファイルを選択して、イベントデータを読み込みます。
             </p>
             {jsonToUuid && (
-              <>
-                <p className="text-blue-600 mt-2">
-                  読み込み完了！ルームID: {jsonToUuid}
-                </p>
-                {/* 読み込んだデータをモダンなuiで表示する */}
-              </>
+              <Button
+                onClick={async () => {
+                  const result = await invoke("get_local_ip");
+                  handlePageChange(
+                    `/event/${jsonToUuid}/true/${result as string}:12345`
+                  );
+                }}
+              >
+                イベントを表示
+              </Button>
             )}
+          </div>
+        </div>
+        <div className="bg-gray-50 min-h-screen font-sans">
+          <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+            {/* Header */}
+            <header className="mb-8">
+              <h1 className="text-4xl font-bold text-gray-900 tracking-tight">
+                {jsonData.roomSettings.eventname}
+              </h1>
+              <p className="text-lg text-gray-600 mt-1">
+                {jsonData.roomSettings.eventinfo}
+              </p>
+            </header>
+
+            <div className="grid grid-cols-2 gap-8">
+              {/* Left Column: Summary and Settings */}
+              <div className="lg:col-span-1 space-y-8">
+                <InfoCard title="出席状況サマリー">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">出席者数</span>
+                    <span className="text-2xl font-bold text-indigo-600">
+                      {jsonData.attendees.filter((a) => a.attended).length} /{" "}
+                      {jsonData.attendees.length}
+                    </span>
+                  </div>
+                  <div className="mt-4 bg-white p-3 rounded-md shadow-sm">
+                    <div className="relative pt-1">
+                      <div className="overflow-hidden h-2 text-xs flex rounded bg-indigo-200">
+                        <div
+                          style={{
+                            width: `${Math.round(
+                              (jsonData.attendees.filter(
+                                (attendee) => attendee.attended
+                              ).length /
+                                jsonData.attendees.length) *
+                                100
+                            )}%`,
+                          }}
+                          className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-indigo-600 transition-all duration-1000 ease-out"
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-right text-indigo-600 font-semibold mt-2">
+                    {Math.round(
+                      (jsonData.attendees.filter(
+                        (attendee) => attendee.attended
+                      ).length /
+                        jsonData.attendees.length) *
+                        100
+                    )}
+                    %
+                  </p>
+                </InfoCard>
+
+                <InfoCard
+                  title={"当日参加者:" + jsonData.today.length}
+                  className="overflow-x-auto"
+                >
+                  {jsonData.roomSettings.nolist ? (
+                    <p className="text-gray-500 text-sm">
+                      リストは非表示に設定されています。
+                    </p>
+                  ) : jsonData.today.length > 0 ? (
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                      {jsonData.today.map((t) => (
+                        <div
+                          key={t.id}
+                          className="bg-gray-100 p-2 rounded-md text-gray-700"
+                        >
+                          {t.id}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-sm">
+                      当日参加者はいません。
+                    </p>
+                  )}
+                </InfoCard>
+
+                <InfoCard title="表示設定">
+                  <ul className="space-y-3 text-gray-700">
+                    <li className="flex items-center">
+                      <span
+                        className={`w-2 h-2 rounded-full mr-3 ${
+                          jsonData.roomSettings.arrowtoday
+                            ? "bg-green-500"
+                            : "bg-gray-300"
+                        }`}
+                      ></span>
+                      当日参加を許可
+                    </li>
+                    <li className="flex items-center">
+                      <span
+                        className={`w-2 h-2 rounded-full mr-3 ${
+                          jsonData.roomSettings.autotodayregister
+                            ? "bg-green-500"
+                            : "bg-gray-300"
+                        }`}
+                      ></span>
+                      自動で当日参加登録
+                    </li>
+                    <li className="flex items-center">
+                      <span
+                        className={`w-2 h-2 rounded-full mr-3 ${
+                          jsonData.roomSettings.soukai
+                            ? "bg-green-500"
+                            : "bg-gray-300"
+                        }`}
+                      ></span>
+                      総会モード
+                    </li>
+                    <li className="flex items-center">
+                      <span
+                        className={`w-2 h-2 rounded-full mr-3 ${
+                          jsonData.roomSettings.nolist
+                            ? "bg-red-500"
+                            : "bg-gray-300"
+                        }`}
+                      ></span>
+                      リストを非表示
+                    </li>
+                  </ul>
+                </InfoCard>
+              </div>
+
+              {/* Right Column: Attendee List */}
+              <div className="">
+                <InfoCard title="出席者リスト">
+                  {jsonData.roomSettings.nolist ? (
+                    <div className="text-center py-12">
+                      <p className="text-gray-500">
+                        リストは非表示に設定されています。
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="p-4 text-sm font-semibold text-gray-600">
+                              ID
+                            </th>
+                            <th className="p-4 text-sm font-semibold text-gray-600 text-right">
+                              ステータス
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {jsonData.attendees.map((attendee) => (
+                            <tr
+                              key={attendee.id}
+                              className="border-b last:border-none hover:bg-gray-50"
+                            >
+                              <td className="p-4 font-mono text-gray-800">
+                                {attendee.id}
+                              </td>
+                              <td className="p-4 text-right">
+                                <StatusBadge attended={attendee.attended} />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </InfoCard>
+              </div>
+            </div>
           </div>
         </div>
       </div>

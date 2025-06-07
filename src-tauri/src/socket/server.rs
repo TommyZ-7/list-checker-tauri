@@ -53,11 +53,38 @@ async fn join_data(socket: SocketRef, Data(data): Data<String>) {
 
     // 初期データをクライアントに送信
 
+    
+
 
     if let Err(e) = socket.emit("join_return", &return_data) {
         eprintln!("Failed to send initial data: {}", e);
     }
 }
+
+async fn sync_all_data(socket: SocketRef, Data(data): Data<String>) {
+    println!("Received sync_all_data from {}: {}", socket.id, data);
+    
+    // ここで全データを同期するロジックを実装
+    let app_state = get_app_state2();
+    let key = data.clone() + ":attendees";
+    let return_data = app_state.get(&key);
+
+    let app_state2 = get_app_state3();
+    let key2 = data.clone() + ":ontheday";
+    let return_data2 = app_state2.get(&key2);
+    println!("Returning data: {:?}, {:?}", return_data, return_data2);
+
+    if let Err(e) = socket.emit("register_attendees_return", &(return_data)) {
+        eprintln!("Failed to send sync_all_data: {}", e);
+    }
+
+    if let Err(e) = socket.emit("register_ontheday_return", &(return_data2)) {
+        eprintln!("Failed to send sync_all_data: {}", e);
+    }
+}
+
+
+
 
 async fn register_today(socket: SocketRef, Data(data): Data<String>) {
     println!("Received register_today from {}: {}", socket.id, data);
@@ -203,6 +230,7 @@ pub async fn start_socketio_server(port: u16) -> Result<(), Box<dyn std::error::
         s.on("register_attendees", register_attendees);
         s.on("register_ontheday" , register_ontheday);
         s.on("settings_change", settings_change);
+        s.on("sync_all_data", sync_all_data);
     });
 
     // Create the app with CORS and Socket.IO layers

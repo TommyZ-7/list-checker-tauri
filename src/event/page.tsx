@@ -12,14 +12,13 @@ import Papa from "papaparse";
 import {
   Drawer,
   DrawerOverlay,
-  DrawerCloseButton,
   DrawerHeader,
   DrawerBody,
   DrawerFooter,
   useDisclosure,
 } from "@yamada-ui/react";
 
-import { Tabs, TabList, Tab, TabPanels, TabPanel } from "@yamada-ui/react";
+import { Tabs, Tab, TabPanel } from "@yamada-ui/react";
 
 import { Card, CardHeader, CardBody, CardFooter } from "@yamada-ui/react";
 
@@ -159,6 +158,12 @@ function EventPage() {
             }
           );
 
+          socketRef.current.on("sync_all_data_return", (data: any[]) => {
+            console.log("Sync all data return event received:", data);
+          });
+
+          socketRef.current.emit("sync_all_data", uuid);
+
           return () => {
             if (socketRef.current) {
               socketRef.current.disconnect();
@@ -242,7 +247,12 @@ function EventPage() {
           }
         );
 
+        socketRef.current.on("sync_all_data_return", (data: any) => {
+          console.log("Sync all data return event received:", data);
+        });
+
         socketRef.current.emit("join", uuid);
+        socketRef.current.emit("sync_all_data", uuid);
 
         return () => {
           if (socketRef.current) {
@@ -254,11 +264,15 @@ function EventPage() {
         console.error("Error fetching event data via socket:", error);
       }
     };
+    // 出席状態を同期
+
     if (isHost) {
       fetchData();
+
       setDataFetched(true);
     } else {
       fetchDataSocket();
+
       setDataFetched(true);
     }
   }, []);
@@ -281,6 +295,11 @@ function EventPage() {
       count++;
     }
     return compressedData;
+  };
+
+  const syncTest = () => {
+    socketRef.current.emit("sync_all_data", uuid);
+    console.log("Sync all data event emitted with UUID:", uuid);
   };
 
   const mergeArrays = (array1: number[], array2: number[]): number[] => {
@@ -767,78 +786,7 @@ function EventPage() {
               )}
             </CardBody>
             <CardFooter className="flex justify-end">
-              <div>
-                <div className="mt-4">
-                  <Checkbox
-                    className="ml-4"
-                    checked={settings.arrowtoday || settings.noList}
-                    disabled={settings.noList}
-                    onChange={(e) => {
-                      if (e.target.checked === false) {
-                        setSettings((prev) => ({
-                          ...prev,
-                          autotodayregister: false,
-                          arrowtoday: false,
-                        }));
-                        settingsRef.current = {
-                          autotodayregister: false,
-                          arrowtoday: false,
-                          soukai: settings.soukai,
-                          noList: settings.noList,
-                        };
-                        console.log(settingsRef.current);
-                        handleSettingsChange(settingsRef.current);
-                        return;
-                      }
-                      setSettings((prev) => ({
-                        ...prev,
-                        arrowtoday: e.target.checked,
-                      }));
-                      settingsRef.current = {
-                        ...settingsRef.current,
-                        arrowtoday: e.target.checked,
-                      };
-                      console.log(settingsRef.current);
-                      handleSettingsChange(settingsRef.current);
-                    }}
-                    colorScheme="indigo"
-                    size="md"
-                  >
-                    当日参加を許可
-                  </Checkbox>
-                  <Checkbox
-                    className="ml-4"
-                    checked={settings.autotodayregister}
-                    disabled={!settings.arrowtoday}
-                    onChange={(e) => {
-                      setSettings((prev) => ({
-                        ...prev,
-                        autotodayregister: e.target.checked,
-                      }));
-                      settingsRef.current = {
-                        ...settingsRef.current,
-                        autotodayregister: e.target.checked,
-                      };
-                      console.log(settingsRef.current);
-                      handleSettingsChange(settingsRef.current);
-                    }}
-                    colorScheme="indigo"
-                    size="md"
-                  >
-                    当日参加を自動登録
-                  </Checkbox>
-                  <button
-                    onClick={() => {
-                      console.log("settings:", settings);
-                      console.log("Expected Attendees:", roomInfo);
-                    }}
-                    className="ml-4 text-sm text-indigo-600 hover:text-indigo-800"
-                  >
-                    設定を確認
-                  </button>
-                </div>
-                <div className="mt-2">{uuid}</div>
-              </div>
+              <div></div>
             </CardFooter>
           </Card>
         </div>
@@ -971,7 +919,6 @@ function EventPage() {
             <CardBody>
               <Tabs
                 variant="sticky"
-                fitted
                 index={downloadType}
                 onChange={(index) => setDownloadType(index)}
               >
@@ -1000,7 +947,12 @@ function EventPage() {
                 onClick={downloadexcel}
                 className="w-full"
               >
-                出席者リストをダウンロード
+                {downloadType === 0
+                  ? "Excel"
+                  : downloadType === 1
+                  ? "CSV"
+                  : "JSON"}
+                でダウンロード
               </Button>
             </CardBody>
           </Card>
@@ -1089,6 +1041,22 @@ function EventPage() {
               >
                 総会モード
               </Checkbox>
+            </CardBody>
+          </Card>
+          <Card variant={"outline"} className="mb-4 w-full">
+            <CardHeader>
+              <Text fontSize={"2xl"} fontWeight="bold">
+                デバッグ
+              </Text>
+            </CardHeader>
+            <CardBody>
+              <Button
+                colorScheme="primary"
+                onClick={syncTest}
+                className="w-full"
+              >
+                全データ同期
+              </Button>
             </CardBody>
           </Card>
         </DrawerBody>

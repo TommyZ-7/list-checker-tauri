@@ -162,19 +162,19 @@ fn register_event(data: String) -> String {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct json_to_attendees_Struct {
+struct JsonToAttendeesStruct {
     attendeeindex: Vec<i32>,
     uuid: String,
 }
 
 #[tauri::command]
-fn json_to_attendees(data: json_to_attendees_Struct) -> String {
+fn json_to_attendees(data: JsonToAttendeesStruct) -> String {
     println!("Received register_attendees: {:?}", data);
     let app_state = get_app_state2();
     let key = format!("{}:attendees", data.uuid);
 
     //既存のデータは取得しない
-    let result = app_state.insert(key.clone(), data.attendeeindex.clone());
+    app_state.insert(key.clone(), data.attendeeindex.clone());
 
     
     println!("Updated attendees for {}: {:?}", data.uuid, data.attendeeindex);
@@ -186,19 +186,19 @@ fn json_to_attendees(data: json_to_attendees_Struct) -> String {
 
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct json_to_today_Struct {
+pub struct JsonToTodayStruct {
     uuid: String,
     today: Vec<String>,
 }
 
 #[tauri::command]
-fn json_to_today(data: json_to_today_Struct) -> String {
+fn json_to_today(data: JsonToTodayStruct) -> String {
     println!("Received register_today: {:?}", data);
     let app_state = get_app_state3();
-    let key =  format!("{}:today", data.uuid);
+    let key =  format!("{}:ontheday", data.uuid);
 
     //既存のデータは取得しない
-    let result = app_state.insert(key.clone(), data.today.clone());
+    app_state.insert(key.clone(), data.today.clone());
     println!("Updated today for {}: {:?}", data.uuid, data.today);
     // 今日の情報をクライアントに送信
     let json = serde_json::to_string(&data).unwrap();
