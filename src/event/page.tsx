@@ -6,7 +6,7 @@ import { IconButton, Checkbox } from "@yamada-ui/react";
 import { invoke } from "@tauri-apps/api/core";
 import { Text } from "@yamada-ui/react";
 import { Button } from "@yamada-ui/react";
-
+import ShortenCode from "@/lib/ShortenCode";
 import Papa from "papaparse";
 
 import {
@@ -574,6 +574,17 @@ function EventPage() {
     }
   };
 
+  const handlebase64test = () => {
+    console.log("Base64 Test:" + uuid);
+    if (!uuid) {
+      console.error("UUID is not provided for Base64 test.");
+      return;
+    }
+    const base64Shortened = ShortenCode.shortenCode(uuid);
+    console.log("Base64 Shortened Code:", base64Shortened);
+    const restoredCode = ShortenCode.restoreCode(base64Shortened);
+    console.log("Restored Code:", restoredCode);
+  };
   return (
     <div className="min-h-screen custom_font">
       {/* ヘッダー */}
@@ -1056,6 +1067,13 @@ function EventPage() {
                 className="w-full"
               >
                 全データ同期
+              </Button>
+              <Button
+                colorScheme="primary"
+                onClick={handlebase64test}
+                className="w-full mt-4"
+              >
+                Base64テスト
               </Button>
             </CardBody>
           </Card>

@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 
 
+
 pub mod socket;
 
 pub use socket::*;
@@ -148,6 +149,7 @@ fn register_event(data: String) -> String {
 
 
     let uuid = Uuid::new_v4().to_string();
+    let uuid = uuid.split('-').next().unwrap_or(&uuid).to_string();
     let event_key = format!("{}:datas", uuid);
 
     let app_state = get_app_state();
@@ -301,7 +303,7 @@ pub fn run() {
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
             register_event, debug_hashmap, get_event, debug_run_server, register_attendees, get_local_ip , json_to_attendees, json_to_today
-            ])
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
