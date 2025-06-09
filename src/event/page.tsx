@@ -19,13 +19,11 @@ import {
 } from "@yamada-ui/react";
 
 import { Tabs, Tab, TabPanel } from "@yamada-ui/react";
-
 import { Card, CardHeader, CardBody, CardFooter } from "@yamada-ui/react";
-
 import { Check, Settings, AlignJustify } from "lucide-react";
-
 import { io } from "socket.io-client";
 import * as XLSX from "xlsx";
+
 
 type Attendee = {
   id: string;
@@ -264,7 +262,6 @@ function EventPage() {
         console.error("Error fetching event data via socket:", error);
       }
     };
-    // 出席状態を同期
 
     if (isHost) {
       fetchData();

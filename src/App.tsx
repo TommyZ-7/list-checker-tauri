@@ -1,5 +1,5 @@
 import "./App.css";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Wifi,
   MonitorSpeaker,
@@ -68,6 +68,8 @@ function App() {
   const [currentView, setCurrentView] = useState("main");
   const [selectedIcon, setSelectedIcon] = useState<IconType | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [serverRunning, setServerRunning] = useState(false);
+  const [localIP, setLocalIP] = useState<string>("");
   const [serverInfo, setServerInfo] = useState<serverInfo>({
     domain: "",
     port: 12345,
@@ -128,13 +130,30 @@ function App() {
     {
       id: "soukai",
       title: "定期学生総会用モード",
-      description: "動作と表記を定期学生総会用に最適化します。",
+      description:
+        "動作と表記を定期学生総会用に最適化します。また、委任状集計用のExcelファイルをそのまま読み込めるように動作を変更します。",
       icon: Users,
       features: ["定期学生総会"],
       gifUrl: "/public/test.jpg",
       color: "bg-red-600",
     },
   ];
+
+  useEffect(() => {
+    // 初期状態でメインビューを表示
+    const fetchServerState = async () => {
+      const serverState = await invoke("server_check");
+      setServerRunning(serverState as boolean);
+    };
+
+    const fetchLocalIP = async () => {
+      const result = await invoke("get_local_ip");
+      setLocalIP(result as string);
+    };
+
+    fetchServerState();
+    fetchLocalIP();
+  }, []);
 
   const handleMenuClick = (menuType: MenuType, icon: IconType) => {
     setSelectedIcon(icon);
@@ -175,12 +194,6 @@ function App() {
         try {
           const parsedData = JSON.parse(e.target?.result as string);
           console.log("Loaded JSON data:", parsedData);
-          // JSONデータを処理するロジックをここに追加
-          // ここで必要な処理を行う
-          // 次の形式のJSONデータを想定しています
-          // {"attendees":[{"id":"122D086","attended":true},{"id":"122D093","attended":false},{"id":"122D212","attended":true},{"id":"122D084","attended":false},{"id":"121A121","attended":false},{"id":"122D342","attended":false},{"id":"122H213","attended":false},{"id":"111V434","attended":false},{"id":"123S234","attended":false},{"id":"122J343","attended":false},{"id":"124G463","attended":false},{"id":"275H456","attended":false},{"id":"132G467","attended":false},{"id":"235T324","attended":false},{"id":"242G234","attended":false},{"id":"236F252","attended":false},{"id":"654F675","attended":false},{"id":"654G542","attended":false},{"id":"333F444","attended":false},{"id":"111D111","attended":false},{"id":"566F555","attended":false}],"today":[{"id":"tttt"},{"id":"weq3"}],"roomSettings":{"eventname":"14343","eventinfo":"3434","arrowtoday":true,"autotodayregister":true,"soukai":false,"nolist":false}}
-          // 入力形式はinputのtype="file"で読み込んだJSONファイルを想定しています
-
           console.log("Parsed JSON Data:", parsedData);
 
           const sendData = JSON.stringify({
@@ -235,6 +248,8 @@ function App() {
             },
           });
           invoke("debug_run_server");
+          const serverState = await invoke("server_check");
+          setServerRunning(serverState as boolean);
 
           console.log("イベント登録結果:", result1);
           console.log("参加者登録結果:", result2);
@@ -246,6 +261,10 @@ function App() {
       };
       reader.readAsText(file);
     }
+  };
+  const getDomain = async () => {
+    const result = await invoke("get_local_ip");
+    return result as string;
   };
 
   const renderLoadJsonMenu = () => {
@@ -577,13 +596,17 @@ function App() {
               </div>
             </div>
           </button>
-          <div className="flex items-center p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer">
-            <Share2 className="w-8 h-8 text-purple-500 mr-4" />
-            <div>
-              <h3 className="font-semibold">共有設定</h3>
-              <p className="text-sm text-gray-600">招待リンクを作成</p>
+          {serverRunning && (
+            <div className="flex items-center p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer">
+              <Share2 className="w-8 h-8 text-purple-500 mr-4" />
+              <div>
+                <h3 className="font-semibold">登録済みルームを開く</h3>
+                <p className="text-sm text-gray-600">
+                  既に起動しているルームを開きます。
+                </p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
@@ -634,7 +657,7 @@ function App() {
                   setServerInfo({ ...serverInfo, domain: e.target.value })
                 }
                 type="text"
-                placeholder="ドメインを入力してください"
+                placeholder="ipアドレスを入力してください"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -715,6 +738,17 @@ function App() {
             ) : (
               <Wifi className="w-6 h-6 text-blue-500" />
             )}
+          </div>
+        </div>
+      )}
+
+      {serverRunning && (
+        <div className="fixed bottom-4 right-4 z-10 bg-green-100 text-green-800 p-2 rounded-lg shadow-md">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium">サーバーが起動中</span>
+            <span className="text-xs text-gray-500">
+              {localIP}:{serverInfo.port}
+            </span>
           </div>
         </div>
       )}

@@ -7,7 +7,7 @@ use crate::get_app_state3;
 use crate::get_app_state4;
 use local_ip_address::local_ip;
 use serde::{ Deserialize, Serialize};
-
+use crate::IS_SERVER_RUNNING;
 
 
 
@@ -245,6 +245,8 @@ pub async fn start_socketio_server(port: u16) -> Result<(), Box<dyn std::error::
     let listener = tokio::net::TcpListener::bind(format!("{}:{}", my_domain, port)).await?;
     println!("Socket.IO server listening on port {}", port);
     
+    *IS_SERVER_RUNNING.lock().unwrap() = true;
+
     axum::serve(listener, app).await?;
     Ok(())
 }

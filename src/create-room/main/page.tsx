@@ -20,9 +20,11 @@ import { Progress } from "@yamada-ui/react";
 import { Alert, AlertIcon, AlertDescription } from "@yamada-ui/react";
 import { useDropzone } from "react-dropzone";
 import { Link } from "react-router";
+import { useNavigate } from "react-router";
 
 import { invoke } from "@tauri-apps/api/core";
 import { useParams } from "react-router";
+import { Button } from "@yamada-ui/react";
 
 interface FormData {
   eventname: string;
@@ -55,6 +57,7 @@ const EventRegistration = () => {
   const [domain, setDomain] = useState("");
   const [dataSended, setDataSended] = useState(false);
   const [isAnimating, setIsAnimating] = useState(true);
+  const navigate = useNavigate();
 
   const steps = [
     {
@@ -84,6 +87,13 @@ const EventRegistration = () => {
       icon: <Users className="w-8 h-8 text-purple-500" />,
       placeholder: "当日参加者を許可しますか？",
       type: "settings",
+    },
+    {
+      id: "cpmplete",
+      title: "完了",
+      icon: <Users className="w-8 h-8 text-gray-500" />,
+      placeholder: "イベント登録が完了しました",
+      type: "complete",
     },
   ];
 
@@ -147,28 +157,51 @@ const EventRegistration = () => {
           // シートの最初の名前を取得;
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
+          if (formData.soukai) {
+            // B列の2行目からのデータを抽出
+            const participantList: any[] = [];
+            let rowIndex = 2; // B列の2行目から開始
 
-          // A列のデータを抽出（ヘッダーなしを;想定）
-          const participantList: any[] = [];
-          let rowIndex = 1;
+            while (true) {
+              const cellAddress = "B" + rowIndex;
+              const cell = worksheet[cellAddress];
 
-          while (true) {
-            const cellAddress = "A" + rowIndex;
-            const cell = worksheet[cellAddress];
+              if (!cell) break;
 
-            if (!cell) break;
+              participantList.push(cell.v);
+              rowIndex++;
+            }
+            await sleep(1000);
+            setFormData((prev) => ({
+              ...prev,
+              participants: participantList,
+            }));
+            setIsFileLoaded(true);
+            setLoading(false);
+            console.log("参加者リスト:", participantList);
+          } else {
+            // A列のデータを抽出（ヘッダーなしを;想定）
+            const participantList: any[] = [];
+            let rowIndex = 1;
 
-            participantList.push(cell.v);
-            rowIndex++;
+            while (true) {
+              const cellAddress = "A" + rowIndex;
+              const cell = worksheet[cellAddress];
+
+              if (!cell) break;
+
+              participantList.push(cell.v);
+              rowIndex++;
+            }
+            await sleep(1000);
+            setFormData((prev) => ({
+              ...prev,
+              participants: participantList,
+            }));
+            setIsFileLoaded(true);
+            setLoading(false);
+            console.log("参加者リスト:", participantList);
           }
-          await sleep(2000);
-          setFormData((prev) => ({
-            ...prev,
-            participants: participantList,
-          }));
-          setIsFileLoaded(true);
-          setLoading(false);
-          console.log("参加者リスト:", participantList);
         }
         setTimeout(() => setLoading(false), 10000);
       } catch (error) {
@@ -213,10 +246,7 @@ const EventRegistration = () => {
       if (formData.noList) {
         return true; // noListがtrueの場合は参加者リストの入力をスキップ
       }
-      return (
-        formData.participants.length > 0 &&
-        formData.participants[0].trim() !== ""
-      );
+      return formData.participants.length > 0; // 参加者リストが空でないことを確認
     }
     if (currentStep === 3) {
       return true; // 最後のステップは常に進める
@@ -241,6 +271,7 @@ const EventRegistration = () => {
         invoke("debug_run_server");
         setUuid(result as string);
         setDataSended(true);
+        setCurrentStep(steps.length - 1);
       }, 1000);
     } else {
       const sendData = JSON.stringify({
@@ -258,12 +289,21 @@ const EventRegistration = () => {
         invoke("debug_run_server");
         setUuid(result as string);
         setDataSended(true);
+        setCurrentStep(steps.length - 1);
       }, 1000);
     }
     console.log("イベント登録結果:");
+    // 最後のステップに進む
   };
 
-  const isLastStep = currentStep === steps.length - 1;
+  const isLastStep = currentStep === steps.length - 2;
+
+  const handlePageChange = (page: string) => {
+    setIsAnimating(true);
+    setTimeout(() => {
+      navigate(page);
+    }, 300);
+  };
 
   return (
     <div
@@ -456,6 +496,49 @@ const EventRegistration = () => {
                         </Link>
                       ) : null}
                     </>
+                  ) : step.type === "complete" ? (
+                    <div className="text-center">
+                      <div className="space-y-6">
+                        <div className="space-y-3">
+                          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <div className="text-sm text-blue-600 font-medium mb-1">
+                              ルームID
+                            </div>
+                            <div className="text-lg font-mono font-bold text-blue-800 break-all">
+                              {uuid}
+                            </div>
+                          </div>
+
+                          <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                            <div className="text-sm text-green-600 font-medium mb-1">
+                              IPアドレス
+                            </div>
+                            <div className="text-lg font-mono font-semibold text-green-800">
+                              {domain}
+                            </div>
+                          </div>
+
+                          <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                            <div className="text-sm text-purple-600 font-medium mb-1">
+                              ポート番号
+                            </div>
+                            <div className="text-lg font-mono font-semibold text-purple-800">
+                              12345
+                            </div>
+                          </div>
+                          <Button
+                            onClick={() =>
+                              handlePageChange(
+                                `/event/${uuid}/true/${domain}:12345`
+                              )
+                            }
+                            className="mt-4"
+                          >
+                            イベントページへ
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
                   ) : null}
                 </div>
               </div>
@@ -465,54 +548,59 @@ const EventRegistration = () => {
 
         {/* ナビゲーションボタン */}
         <div className="p-6 bg-gray-50 flex justify-between items-center">
-          <button
-            onClick={prevStep}
-            disabled={currentStep === 0}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
-              currentStep === 0
-                ? "text-gray-400 cursor-not-allowed"
-                : "text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            <ChevronLeft className="w-5 h-5" color="#3e9392" />
-            <span>戻る</span>
-          </button>
-
-          <div className="text-sm text-gray-500">
-            {currentStep + 1} / {steps.length}
-          </div>
-
-          {isLastStep ? (
+          {currentStep !== 4 ? (
             <button
-              onClick={handleSubmit}
-              disabled={!canProceed() || dataSended}
-              className={`flex items-center space-x-2 px-6 py-2 rounded-lg transition-all duration-200 ${
-                canProceed()
-                  ? "bg-green-500 text-white hover:bg-green-600"
-                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
-              }
-                  ${dataSended ? "cursor-not-allowed opacity-50" : ""}    
-              `}
-            >
-              <span>登録</span>
-            </button>
-          ) : (
-            <button
-              onClick={nextStep}
-              disabled={!canProceed()}
+              onClick={prevStep}
+              disabled={currentStep === 0}
               className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
-                canProceed()
-                  ? "bg-blue-500 text-white hover:bg-blue-600"
-                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                currentStep === 0
+                  ? "text-gray-400 cursor-not-allowed"
+                  : "text-gray-600 hover:bg-gray-200"
               }`}
             >
-              <span>次へ</span>
-              <ChevronRight
-                className="w-5 h-5"
-                color={cn(canProceed() ? "#3e9392" : "black")}
-              />
+              <ChevronLeft className="w-5 h-5" color="#3e9392" />
+              <span>戻る</span>
             </button>
-          )}
+          ) : null}
+
+          <div className="text-sm text-gray-500 text-center justify-center flex-1">
+            {currentStep + 1} / {steps.length}
+          </div>
+          {currentStep !== 4 ? (
+            <div>
+              {isLastStep ? (
+                <button
+                  onClick={handleSubmit}
+                  disabled={!canProceed() || dataSended}
+                  className={`flex items-center space-x-2 px-6 py-2 rounded-lg transition-all duration-200 ${
+                    canProceed()
+                      ? "bg-green-500 text-white hover:bg-green-600"
+                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  }
+                  ${dataSended ? "cursor-not-allowed opacity-50" : ""}    
+              `}
+                >
+                  <span>登録</span>
+                </button>
+              ) : (
+                <button
+                  onClick={nextStep}
+                  disabled={!canProceed()}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
+                    canProceed()
+                      ? "bg-blue-500 text-white hover:bg-blue-600"
+                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  }`}
+                >
+                  <span>次へ</span>
+                  <ChevronRight
+                    className="w-5 h-5"
+                    color={cn(canProceed() ? "#3e9392" : "black")}
+                  />
+                </button>
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

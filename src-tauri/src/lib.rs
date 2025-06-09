@@ -12,6 +12,9 @@ pub mod socket;
 pub use socket::*;
 
 
+static IS_SERVER_RUNNING: Mutex<bool> = Mutex::new(false);
+
+
 #[derive(Debug, Default)]
 pub struct AppState {
     store: Mutex<HashMap<String, Eventstruct>>,
@@ -294,6 +297,12 @@ fn register_attendees(data: AttendeeIndex) -> String {
 
 }
 
+#[tauri::command]
+fn server_check() -> bool {
+    let is_running = IS_SERVER_RUNNING.lock().unwrap();
+    *is_running
+}
+
 
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -302,7 +311,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
-            register_event, debug_hashmap, get_event, debug_run_server, register_attendees, get_local_ip , json_to_attendees, json_to_today
+            register_event, debug_hashmap, get_event, debug_run_server, register_attendees, get_local_ip , json_to_attendees, json_to_today, server_check
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
