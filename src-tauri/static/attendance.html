@@ -920,6 +920,9 @@
           if (settings.soukai) {
             // 総会モードの場合: 変更不可
             autotodayToggle.disabled = true;
+          } else if (!settings.arrowtoday) {
+            // 当日参加を許可がfalseの場合: 変更不可
+            autotodayToggle.disabled = true;
           } else {
             // それ以外（nolistモードを含む）: 変更可能
             autotodayToggle.disabled = false;
@@ -1067,6 +1070,11 @@
       function toggleSetting(settingName, value) {
         // ローカルの設定を更新
         settings[settingName] = value;
+
+        // 当日参加を許可がfalseになった場合、自動登録もfalseにする
+        if (settingName === "arrowtoday" && value === false) {
+          settings.autotodayregister = false;
+        }
 
         // サーバーに変更を送信
         if (socket && socket.connected) {
@@ -1284,17 +1292,19 @@
           return;
         }
 
-        // データ準備
+        // データ準備（インポート可能な形式）
         const jsonData = {
-          uuid: uuid,
-          exportDate: new Date().toISOString(),
-          settings: settings,
-          expectedAttendees: expectedAttendees.map((attendee) => ({
+          eventname: eventData?.eventname || "",
+          eventinfo: eventData?.eventinfo || "",
+          participants: expectedAttendees.map((attendee) => ({
             id: attendee.id,
             attended: attendee.attended,
-            attendedAt: attendee.attendedAt || null,
           })),
-          onTheDay: onTheDay,
+          todaylist: onTheDay,
+          arrowtoday: settings?.arrowtoday || false,
+          autotodayregister: settings?.autotodayregister || false,
+          soukai: settings?.soukai || false,
+          nolist: settings?.nolist || false,
         };
 
         // JSON文字列作成

@@ -1,8 +1,10 @@
-use serde::{ Deserialize, Serialize};
+use serde::{ Deserialize, Serialize, Deserializer};
+use serde::de::{self, Visitor};
 use uuid::Uuid;
 use std::collections::HashMap;
 use tauri::State;
 use std::sync::{Arc, Mutex, OnceLock};
+use std::fmt;
 
 
 
@@ -128,11 +130,61 @@ pub struct Settings {
     autotodayregister: bool,
 }
 
+// Participant構造体（オブジェクト形式用）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct ParticipantObject {
+    id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    attended: Option<bool>,
+}
+
+// カスタムデシリアライザ：文字列配列またはオブジェクト配列を受け入れる
+fn deserialize_participants<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct ParticipantsVisitor;
+
+    impl<'de> Visitor<'de> for ParticipantsVisitor {
+        type Value = Vec<String>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a list of strings or objects with id field")
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+        where
+            A: de::SeqAccess<'de>,
+        {
+            let mut result = Vec::new();
+            
+            while let Some(value) = seq.next_element::<serde_json::Value>()? {
+                match value {
+                    serde_json::Value::String(s) => result.push(s),
+                    serde_json::Value::Object(obj) => {
+                        if let Some(serde_json::Value::String(id)) = obj.get("id") {
+                            result.push(id.clone());
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            
+            Ok(result)
+        }
+    }
+
+    deserializer.deserialize_seq(ParticipantsVisitor)
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Eventstruct {
     eventname: String,
     eventinfo: String,
+    #[serde(deserialize_with = "deserialize_participants")]
     participants: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    todaylist: Option<Vec<String>>,
     arrowtoday: bool,
     autotodayregister: bool,
     nolist: bool,
@@ -164,6 +216,16 @@ fn register_event(data: String) -> String {
     parsed_data.password = Some(String::new()); // 空のパスワード
 
     let app_state = get_app_state();
+
+    // todaylistがある場合、Socket.IOサーバーに保存
+    if let Some(ref todaylist) = parsed_data.todaylist {
+        if !todaylist.is_empty() {
+            let ontheday_key = format!("{}:ontheday", uuid);
+            let app_state3 = get_app_state3();
+            app_state3.insert(ontheday_key, todaylist.clone());
+            println!("Saved todaylist with {} entries", todaylist.len());
+        }
+    }
 
     app_state.insert(event_key.clone(), parsed_data);
 

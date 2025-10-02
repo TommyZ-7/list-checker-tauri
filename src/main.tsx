@@ -9,6 +9,7 @@ const JoinRoom = React.lazy(() => import("./join-room/page"));
 const DebugPage = React.lazy(() => import("./debug/page"));
 const MonitorPage = React.lazy(() => import("./event/monitor-page-new"));
 const EventListPage = React.lazy(() => import("./event-list/page"));
+const ImportEvent = React.lazy(() => import("./import-event/page"));
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
@@ -36,6 +37,8 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
             <Route path="monitor/:uuid/:domain" element={<MonitorPage />} />
 
             <Route path="event-list" element={<EventListPage />} />
+
+            <Route path="import-event" element={<ImportEvent />} />
 
             <Route path="debug" element={<DebugPage />} />
           </Routes>

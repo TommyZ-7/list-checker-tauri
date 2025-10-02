@@ -586,7 +586,7 @@ function App() {
               </div>
             </div>
           </button>
-          <button onClick={() => handleMenuClick("loadJson", "monitor")}>
+          <button onClick={() => handlePageChange("/import-event")}>
             <div className="flex items-center p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer">
               <FileJson className="w-8 h-8 text-green-500 mr-4" />
               <div>

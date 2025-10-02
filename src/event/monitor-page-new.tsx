@@ -174,8 +174,8 @@ function MonitorPageNew() {
   };
 
   const downloadData = (format: "excel" | "csv" | "json") => {
-    if (expectedAttendees.length === 0) {
-      alert("出席者がいません。");
+    if (expectedAttendees.length === 0 && onTheDay.length === 0) {
+      alert("データがありません。");
       return;
     }
 
@@ -195,19 +195,48 @@ function MonitorPageNew() {
       };
 
       const workbook = XLSX.utils.book_new();
-      const worksheet = XLSX.utils.json_to_sheet(data);
-      const worksheetToday = XLSX.utils.json_to_sheet(dataToday);
+
+      // expectedAttendeesが存在する場合のみシートを追加
+      if (expectedAttendees.length > 0) {
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        XLSX.utils.book_append_sheet(workbook, worksheet, "出席者リスト");
+      }
+
+      // 当日参加者が存在する場合のみシートを追加
+      if (onTheDay.length > 0) {
+        const worksheetToday = XLSX.utils.json_to_sheet(dataToday);
+        XLSX.utils.book_append_sheet(workbook, worksheetToday, "当日参加者");
+      }
+
       const worksheetStatistics = XLSX.utils.json_to_sheet([dataStatistics]);
-      XLSX.utils.book_append_sheet(workbook, worksheet, "出席者リスト");
-      XLSX.utils.book_append_sheet(workbook, worksheetToday, "当日参加者");
       XLSX.utils.book_append_sheet(workbook, worksheetStatistics, "統計情報");
       const fileName = `${roomName}_出席者リスト.xlsx`;
       XLSX.writeFile(workbook, fileName);
     } else if (format === "csv") {
-      const csvData = expectedAttendees.map((attendee) => ({
-        学籍番号: attendee.id,
-        出席: attendee.attended ? "O" : "",
-      }));
+      const csvData = [];
+
+      // expectedAttendeesがある場合
+      if (expectedAttendees.length > 0) {
+        csvData.push(
+          ...expectedAttendees.map((attendee) => ({
+            学籍番号: attendee.id,
+            出席: attendee.attended ? "O" : "",
+            カテゴリ: "事前登録",
+          }))
+        );
+      }
+
+      // 当日参加者を追加
+      if (onTheDay.length > 0) {
+        csvData.push(
+          ...onTheDay.map((attendee) => ({
+            学籍番号: attendee,
+            出席: "O",
+            カテゴリ: "当日参加",
+          }))
+        );
+      }
+
       const csv = Papa.unparse(csvData);
       const fileName = `${roomName}_出席者リスト.csv`;
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -223,9 +252,15 @@ function MonitorPageNew() {
       const jsonData = {
         eventname: roomName,
         eventinfo: roomInfo,
-        attendees: expectedAttendees,
-        today: onTheDay,
-        settings: settings,
+        participants: expectedAttendees.map((attendee) => ({
+          id: attendee.id,
+          attended: attendee.attended,
+        })),
+        todaylist: onTheDay,
+        arrowtoday: settings.arrowtoday,
+        autotodayregister: settings.autotodayregister,
+        soukai: settings.soukai,
+        nolist: settings.noList,
       };
       const fileName = `${roomName}_出席者リスト.json`;
       const blob = new Blob([JSON.stringify(jsonData, null, 2)], {
