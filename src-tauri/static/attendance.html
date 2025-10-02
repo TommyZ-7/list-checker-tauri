@@ -597,6 +597,13 @@
     </div>
 
     <script>
+      // HTMLエスケープ関数（XSS対策）
+      function escapeHtml(text) {
+        const div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
       // グローバル変数
       let socket;
       let eventData = null;
@@ -614,7 +621,7 @@
       const uuid = urlParams.get("uuid");
       const serverAddress =
         urlParams.get("server") ||
-        window.location.host.split(":")[0] + ":12345";
+        window.location.host.split(":")[0] + ":50345";
 
       // デバッグログ
       console.log("URL:", window.location.href);
@@ -666,8 +673,9 @@
         socket.on("connect", () => {
           console.log("Connected to server");
           updateConnectionStatus("connected");
+          console.log("Joining room with UUID:", uuid);
           socket.emit("join", uuid);
-          socket.emit("sync_all_data", uuid);
+          // join_returnを受け取った後にsync_all_dataを送信するため、ここでは送信しない
         });
 
         socket.on("disconnect", () => {
@@ -688,8 +696,9 @@
         socket.on("reconnect", () => {
           console.log("Reconnected to server");
           updateConnectionStatus("connected");
+          console.log("Re-joining room with UUID:", uuid);
           socket.emit("join", uuid);
-          socket.emit("sync_all_data", uuid);
+          // join_returnを受け取った後にsync_all_dataを送信するため、ここでは送信しない
         });
 
         socket.on("join_error", (errorMessage) => {
@@ -722,6 +731,10 @@
           document.getElementById("menuEventInfo").textContent =
             data.eventinfo || "-";
 
+          // イベント情報受信後、改めて全データを同期
+          console.log("Requesting full data sync after join...");
+          socket.emit("sync_all_data", uuid);
+
           updateUI();
           updateStats();
         });
@@ -730,8 +743,15 @@
           console.log("Attendance data received:", data);
           if (Array.isArray(data)) {
             dataDeCompression(data);
+            console.log("Attendance data decompressed and applied");
             updateUI();
             updateStats();
+
+            // 該当する行にスクロール（最新の出席者）
+            const lastAttended = expectedAttendees.find((a) => a.attended);
+            if (lastAttended) {
+              scrollToElement(lastAttended.id);
+            }
           }
         });
 
@@ -739,8 +759,15 @@
           console.log("Today data received:", data);
           if (Array.isArray(data)) {
             onTheDay = data;
+            console.log("Today data applied:", onTheDay.length, "participants");
             updateUI();
             updateStats();
+
+            // 最新の当日参加者にスクロール
+            if (onTheDay.length > 0) {
+              const lastToday = onTheDay[onTheDay.length - 1];
+              scrollToElement(lastToday);
+            }
           }
         });
 
@@ -1002,12 +1029,14 @@
 
         expectedAttendees.forEach((attendee) => {
           const row = document.createElement("tr");
-          row.id = `row-${attendee.id}`;
+          row.id = `row-${escapeHtml(attendee.id)}`;
           row.className = "hover:bg-gray-50 transition-colors duration-150";
 
           row.innerHTML = `
                     <td class="py-3 px-4 whitespace-nowrap">
-                        <span class="text-3xl font-medium">${attendee.id}</span>
+                        <span class="text-3xl font-medium">${escapeHtml(
+                          attendee.id
+                        )}</span>
                     </td>
                     <td class="py-3 px-4 whitespace-nowrap text-right">
                         ${
@@ -1035,12 +1064,14 @@
 
         onTheDay.forEach((studentId) => {
           const row = document.createElement("tr");
-          row.id = `row-${studentId}`;
+          row.id = `row-${escapeHtml(studentId)}`;
           row.className = "hover:bg-gray-50 transition-colors duration-150";
 
           row.innerHTML = `
                     <td class="py-3 px-4 whitespace-nowrap" colspan="2">
-                        <span class="text-3xl font-medium">${studentId}</span>
+                        <span class="text-3xl font-medium">${escapeHtml(
+                          studentId
+                        )}</span>
                     </td>
                 `;
           tbody.appendChild(row);

@@ -49,7 +49,7 @@
 
         const COOKIE_NAME = "user_uuid";
         const socketRef = useRef(null);
-        const domainWithPort = "http://" + "localhost:12345"; // ここは実際のドメインとポートに置き換えてください
+        const domainWithPort = "http://" + "localhost:50345"; // ここは実際のドメインとポートに置き換えてください
 
         useEffect(() => {
           socketRef.current = io(domainWithPort);

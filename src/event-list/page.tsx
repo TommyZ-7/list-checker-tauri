@@ -54,7 +54,7 @@ export default function EventListPage() {
       alert("イベントのUUIDが取得できません");
       return;
     }
-    const domain = encodeURIComponent(`${localIP}:12345`);
+    const domain = encodeURIComponent(`${localIP}:50345`);
     navigate(`/monitor/${uuid}/${domain}`);
   };
 

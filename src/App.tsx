@@ -64,7 +64,7 @@ function App() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [serverRunning, setServerRunning] = useState(false);
   const [localIP, setLocalIP] = useState<string>("");
-  const serverPort = 12345;
+  const serverPort = 50345;
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [jsonData, setJsonData] = useState<parsedJsonData>({
     attendees: [],
@@ -248,7 +248,7 @@ function App() {
 
           // イベント登録完了後、自動的にモニターページに遷移
           const localIp = await invoke("get_local_ip");
-          const domain = encodeURIComponent(`${localIp as string}:12345`);
+          const domain = encodeURIComponent(`${localIp as string}:50345`);
 
           // 少し待ってからページ遷移（ユーザーに完了を知らせる）
           setTimeout(() => {
@@ -694,11 +694,11 @@ function App() {
               <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">HTTPポート</span>
-                  <span className="font-mono text-gray-800">8080</span>
+                  <span className="font-mono text-gray-800">50080</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Socket.IOポート</span>
-                  <span className="font-mono text-gray-800">12345</span>
+                  <span className="font-mono text-gray-800">50345</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">識別子</span>

@@ -282,7 +282,7 @@ pub async fn start_socketio_server(port: u16) -> Result<(), Box<dyn std::error::
     let my_domain = local_ip().unwrap();
 
     // 静的ファイル配信用のHTTPサーバーを別ポートで起動
-    let http_port = 8080;
+    let http_port = 50080;
     tokio::spawn(async move {
         if let Err(e) = start_http_server(http_port).await {
             eprintln!("Failed to start HTTP server: {}", e);

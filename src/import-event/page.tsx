@@ -211,7 +211,7 @@ const ImportEvent = () => {
 
       // モニターページへ遷移（resultを直接使用）
       const targetUrl = `/monitor/${result}/${encodeURIComponent(
-        `${domain}:12345`
+        `${domain}:50345`
       )}`;
       console.log("モニターページへ遷移:", targetUrl);
 

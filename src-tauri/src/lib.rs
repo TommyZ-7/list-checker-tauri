@@ -339,7 +339,7 @@ fn debug_hashmap (state: State<AppState>) -> String {
 
 #[tauri::command]
 async fn debug_run_server() -> String {
-    let port = 12345;
+    let port = 50345;
     match start_socketio_server(port).await {
         Ok(_) => format!("Socket.IO server started on port {}", port),
         Err(e) => format!("Failed to start Socket.IO server: {}", e),

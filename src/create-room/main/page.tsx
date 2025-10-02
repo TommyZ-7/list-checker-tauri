@@ -531,7 +531,7 @@ const EventRegistration = () => {
                       {dataSended ? (
                         <Link
                           to={`/monitor/${uuid}/${encodeURIComponent(
-                            `${domain}:12345`
+                            `${domain}:50345`
                           )}`}
                           className="text-blue-500 hover:underline mt-4 inline-block"
                         >
@@ -566,7 +566,7 @@ const EventRegistration = () => {
                               ポート番号
                             </div>
                             <div className="text-sm font-mono font-semibold text-purple-800">
-                              12345
+                              50345
                             </div>
                           </div>
 
@@ -574,7 +574,7 @@ const EventRegistration = () => {
                             onClick={() =>
                               handlePageChange(
                                 `/monitor/${uuid}/${encodeURIComponent(
-                                  `${domain}:12345`
+                                  `${domain}:50345`
                                 )}`
                               )
                             }

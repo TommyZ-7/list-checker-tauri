@@ -287,7 +287,7 @@ function MonitorPage() {
   };
 
   const openAttendancePage = () => {
-    const url = `http://${localIP}:8080/attendance.html?uuid=${uuid}&server=${domain}`;
+    const url = `http://${localIP}:50080/attendance.html?uuid=${uuid}&server=${domain}`;
     console.log("Opening attendance page with URL:", url);
     console.log("UUID:", uuid, "Server:", domain);
     window.open(url, "_blank");
@@ -441,7 +441,7 @@ function MonitorPage() {
                 <div className="mt-6 p-4 bg-gray-100 rounded-lg">
                   <p className="text-xs text-gray-600 mb-1">出席登録URL</p>
                   <p className="text-sm font-mono text-gray-800 break-all">
-                    http://{localIP}:8080/attendance.html?uuid={uuid}&server=
+                    http://{localIP}:50080/attendance.html?uuid={uuid}&server=
                     {domain}
                   </p>
                 </div>

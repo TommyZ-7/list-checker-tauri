@@ -168,8 +168,13 @@ function MonitorPageNew() {
   const todayCount = onTheDay.length;
   const totalWithToday = attendedCount + todayCount;
 
+  // 総会モード用の計算
+  const proxyCount = totalCount - attendedCount; // 委任状数（未出席者数）
+  const soukaiAttendedCount = attendedCount + todayCount; // 出席者数（事前登録出席者 + 当日参加者）
+  const soukaiTotal = proxyCount + soukaiAttendedCount; // 総数
+
   const openAttendancePage = () => {
-    const url = `http://${localIP}:8080/attendance.html?uuid=${uuid}&server=${domain}`;
+    const url = `http://${localIP}:50080/attendance.html?uuid=${uuid}&server=${domain}`;
     window.open(url, "_blank");
   };
 
@@ -374,8 +379,39 @@ function MonitorPageNew() {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="lg:col-span-1 space-y-6"
             >
-              {/* 出席者数カード */}
-              {!settings.noList && (
+              {/* 総会モード: 委任状数カード */}
+              {settings.soukai && !settings.noList && (
+                <motion.div
+                  layout
+                  layoutId="proxy-card"
+                  className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-amber-100 rounded-xl">
+                        <Calendar className="w-6 h-6 text-amber-600" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-700">
+                        委任状数
+                      </h3>
+                    </div>
+                  </div>
+                  <motion.div
+                    key={proxyCount}
+                    initial={{ scale: 1.2, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                    className="text-4xl font-bold text-amber-600"
+                  >
+                    {proxyCount}
+                    <span className="text-2xl text-gray-400 ml-2">枚</span>
+                  </motion.div>
+                  <div className="mt-2 text-sm text-gray-500">未出席者数</div>
+                </motion.div>
+              )}
+
+              {/* 通常モード: 出席者数カード */}
+              {!settings.soukai && !settings.noList && (
                 <motion.div
                   layout
                   layoutId="attendance-card"
@@ -409,8 +445,41 @@ function MonitorPageNew() {
                 </motion.div>
               )}
 
-              {/* 出席率カード */}
-              {!settings.noList && (
+              {/* 総会モード: 出席者数カード */}
+              {settings.soukai && !settings.noList && (
+                <motion.div
+                  layout
+                  layoutId="soukai-attendance-card"
+                  className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-indigo-100 rounded-xl">
+                        <UserCheck className="w-6 h-6 text-indigo-600" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-700">
+                        出席者数
+                      </h3>
+                    </div>
+                  </div>
+                  <motion.div
+                    key={soukaiAttendedCount}
+                    initial={{ scale: 1.2, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                    className="text-4xl font-bold text-indigo-600"
+                  >
+                    {soukaiAttendedCount}
+                    <span className="text-2xl text-gray-400 ml-2">名</span>
+                  </motion.div>
+                  <div className="mt-2 text-sm text-gray-500">
+                    事前登録出席者 + 当日参加者
+                  </div>
+                </motion.div>
+              )}
+
+              {/* 通常モード: 出席率カード */}
+              {!settings.soukai && !settings.noList && (
                 <motion.div
                   layout
                   layoutId="rate-card"
@@ -448,8 +517,37 @@ function MonitorPageNew() {
                 </motion.div>
               )}
 
-              {/* 当日参加者数カード */}
-              {settings.arrowtoday && (
+              {/* 総会モード: 総数カード */}
+              {settings.soukai && !settings.noList && (
+                <motion.div
+                  layout
+                  layoutId="soukai-total-card"
+                  className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl shadow-xl p-6 text-white"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-white/20 rounded-xl">
+                        <Users className="w-6 h-6" />
+                      </div>
+                      <h3 className="text-lg font-semibold">総数</h3>
+                    </div>
+                  </div>
+                  <motion.div
+                    key={soukaiTotal}
+                    initial={{ scale: 1.2, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                    className="text-5xl font-bold"
+                  >
+                    {soukaiTotal}
+                    <span className="text-2xl opacity-90 ml-2">名</span>
+                  </motion.div>
+                  <div className="mt-2 text-sm opacity-90">委任状 + 出席者</div>
+                </motion.div>
+              )}
+
+              {/* 通常モード: 当日参加者数カード */}
+              {!settings.soukai && settings.arrowtoday && (
                 <motion.div
                   layout
                   layoutId="today-card"
@@ -480,8 +578,8 @@ function MonitorPageNew() {
                 </motion.div>
               )}
 
-              {/* 合計カード */}
-              {settings.arrowtoday && (
+              {/* 通常モード: 合計カード */}
+              {!settings.soukai && settings.arrowtoday && (
                 <motion.div
                   layout
                   layoutId="total-card"
@@ -745,7 +843,7 @@ function MonitorPageNew() {
                 <div className="p-4 bg-gray-50 rounded-xl">
                   <div className="text-sm text-gray-500 mb-3">出席登録URL</div>
                   <div className="text-xs font-mono bg-white p-3 rounded-lg border border-gray-200 break-all">
-                    http://{localIP}:8080/attendance.html?uuid={uuid}&server=
+                    http://{localIP}:50080/attendance.html?uuid={uuid}&server=
                     {domain}
                   </div>
                 </div>
