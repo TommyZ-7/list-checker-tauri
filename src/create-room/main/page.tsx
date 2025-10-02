@@ -169,9 +169,11 @@ const EventRegistration = () => {
           // シートの最初の名前を取得;
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
+
+          let participantList: any[] = [];
+
           if (formData.soukai) {
             // B列の2行目からのデータを抽出
-            const participantList: any[] = [];
             let rowIndex = 2; // B列の2行目から開始
 
             while (true) {
@@ -183,6 +185,22 @@ const EventRegistration = () => {
               participantList.push(cell.v);
               rowIndex++;
             }
+
+            // B列にデータがない場合、A列から取得
+            if (participantList.length === 0) {
+              console.log("B列にデータがありません。A列から取得します。");
+              rowIndex = 1;
+              while (true) {
+                const cellAddress = "A" + rowIndex;
+                const cell = worksheet[cellAddress];
+
+                if (!cell) break;
+
+                participantList.push(cell.v);
+                rowIndex++;
+              }
+            }
+
             await sleep(1000);
             setFormData((prev) => ({
               ...prev,
@@ -192,8 +210,7 @@ const EventRegistration = () => {
             setLoading(false);
             console.log("参加者リスト:", participantList);
           } else {
-            // A列のデータを抽出（ヘッダーなしを;想定）
-            const participantList: any[] = [];
+            // A列のデータを抽出（ヘッダーなしを想定）
             let rowIndex = 1;
 
             while (true) {
