@@ -125,6 +125,37 @@ function MonitorPageNew() {
             }
           });
 
+          // 設定変更イベントのリスナーを追加
+          socketRef.current.on("settings_change_return", (data: any) => {
+            console.log("Settings changed from server:", data);
+            if (data) {
+              setSettings((prev) => ({
+                ...prev,
+                ...data,
+              }));
+            }
+          });
+
+          // 他のクライアントからの設定変更を受信
+          socketRef.current.on("update_settings_return", (data: any) => {
+            console.log("Settings updated from another client:", data);
+            if (data) {
+              setSettings((prev) => ({
+                ...prev,
+                arrowtoday:
+                  data.arrowtoday !== undefined
+                    ? data.arrowtoday
+                    : prev.arrowtoday,
+                autotodayregister:
+                  data.autotodayregister !== undefined
+                    ? data.autotodayregister
+                    : prev.autotodayregister,
+                soukai: data.soukai !== undefined ? data.soukai : prev.soukai,
+                noList: data.nolist !== undefined ? data.nolist : prev.noList,
+              }));
+            }
+          });
+
           socketRef.current.emit("sync_all_data", uuid);
 
           return () => {
