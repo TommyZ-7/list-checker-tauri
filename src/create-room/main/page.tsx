@@ -57,7 +57,6 @@ const EventRegistration = () => {
   const [domain, setDomain] = useState("");
   const [dataSended, setDataSended] = useState(false);
   const [isAnimating, setIsAnimating] = useState(true);
-  const [isJsonImported, setIsJsonImported] = useState(false);
   const navigate = useNavigate();
 
   const steps = [
@@ -152,114 +151,88 @@ const EventRegistration = () => {
     // ファイルタイプの判定
     const fileExtension = file.name.split(".").pop()?.toLowerCase();
 
-    if (fileExtension === "json") {
-      // JSONファイルの処理
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          if (e.target && e.target.result) {
-            const jsonText = e.target.result as string;
-            const jsonData = JSON.parse(jsonText);
-
-            // JSONデータの検証
-            if (jsonData.eventname && jsonData.participants) {
-              await sleep(500);
-              setFormData({
-                eventname: jsonData.eventname || "",
-                eventinfo: jsonData.eventinfo || "",
-                participants: jsonData.participants || [],
-                arrowtoday: jsonData.arrowtoday || false,
-                autotodayregister: jsonData.autotodayregister || false,
-                soukai: jsonData.soukai || false,
-                noList: jsonData.nolist || false,
-              });
-              setIsJsonImported(true);
-              setIsFileLoaded(true);
-              setLoading(false);
-              // JSONインポート時は設定ステップ（ステップ3）に移動
-              setCurrentStep(3);
-              console.log("JSONからイベントデータをインポート:", jsonData);
-            } else {
-              throw new Error("無効なJSONフォーマットです");
-            }
-          }
-        } catch (error) {
-          console.error("JSONファイル読み込みエラー:", error);
-          alert(
-            "JSONファイルの読み込みに失敗しました。正しいフォーマットか確認してください。"
-          );
-          setLoading(false);
-        }
-      };
-      reader.readAsText(file);
-    } else {
-      // Excel/CSVファイルの処理
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          if (e.target && e.target.result) {
-            const data = new Uint8Array(e.target.result as ArrayBuffer);
-            const workbook = XLSX.read(data, { type: "array" });
-
-            // シートの最初の名前を取得;
-            const sheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[sheetName];
-            if (formData.soukai) {
-              // B列の2行目からのデータを抽出
-              const participantList: any[] = [];
-              let rowIndex = 2; // B列の2行目から開始
-
-              while (true) {
-                const cellAddress = "B" + rowIndex;
-                const cell = worksheet[cellAddress];
-
-                if (!cell) break;
-
-                participantList.push(cell.v);
-                rowIndex++;
-              }
-              await sleep(1000);
-              setFormData((prev) => ({
-                ...prev,
-                participants: participantList,
-              }));
-              setIsFileLoaded(true);
-              setLoading(false);
-              console.log("参加者リスト:", participantList);
-            } else {
-              // A列のデータを抽出（ヘッダーなしを;想定）
-              const participantList: any[] = [];
-              let rowIndex = 1;
-
-              while (true) {
-                const cellAddress = "A" + rowIndex;
-                const cell = worksheet[cellAddress];
-
-                if (!cell) break;
-
-                participantList.push(cell.v);
-                rowIndex++;
-              }
-              await sleep(1000);
-              setFormData((prev) => ({
-                ...prev,
-                participants: participantList,
-              }));
-              setIsFileLoaded(true);
-              setLoading(false);
-              console.log("参加者リスト:", participantList);
-            }
-          }
-          setTimeout(() => setLoading(false), 10000);
-        } catch (error) {
-          console.error("ファイル読み込みエラー:", error);
-          setLoading(false);
-        }
-      };
-      reader.readAsArrayBuffer(file);
+    // Excelファイル以外は拒否
+    if (fileExtension !== "xlsx" && fileExtension !== "xls") {
+      alert("Excelファイル（.xlsx, .xls）のみアップロード可能です。");
+      setLoading(false);
+      return;
     }
+
+    // Excelファイルの処理
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        if (e.target && e.target.result) {
+          const data = new Uint8Array(e.target.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: "array" });
+
+          // シートの最初の名前を取得;
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          if (formData.soukai) {
+            // B列の2行目からのデータを抽出
+            const participantList: any[] = [];
+            let rowIndex = 2; // B列の2行目から開始
+
+            while (true) {
+              const cellAddress = "B" + rowIndex;
+              const cell = worksheet[cellAddress];
+
+              if (!cell) break;
+
+              participantList.push(cell.v);
+              rowIndex++;
+            }
+            await sleep(1000);
+            setFormData((prev) => ({
+              ...prev,
+              participants: participantList,
+            }));
+            setIsFileLoaded(true);
+            setLoading(false);
+            console.log("参加者リスト:", participantList);
+          } else {
+            // A列のデータを抽出（ヘッダーなしを;想定）
+            const participantList: any[] = [];
+            let rowIndex = 1;
+
+            while (true) {
+              const cellAddress = "A" + rowIndex;
+              const cell = worksheet[cellAddress];
+
+              if (!cell) break;
+
+              participantList.push(cell.v);
+              rowIndex++;
+            }
+            await sleep(1000);
+            setFormData((prev) => ({
+              ...prev,
+              participants: participantList,
+            }));
+            setIsFileLoaded(true);
+            setLoading(false);
+            console.log("参加者リスト:", participantList);
+          }
+        }
+        setTimeout(() => setLoading(false), 10000);
+      } catch (error) {
+        console.error("ファイル読み込みエラー:", error);
+        alert("Excelファイルの読み込みに失敗しました。");
+        setLoading(false);
+      }
+    };
+    reader.readAsArrayBuffer(file);
   };
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+        ".xlsx",
+      ],
+      "application/vnd.ms-excel": [".xls"],
+    },
+  });
 
   const nextStep = () => {
     if (formData.noList && currentStep === 1) {
@@ -451,7 +424,7 @@ const EventRegistration = () => {
                             ドラッグ＆ドロップまたはクリックしてファイルをアップロード
                           </p>
                           <p className="text-xs text-gray-400">
-                            対応形式: Excel (.xlsx, .xls) / JSON (.json)
+                            対応形式: Excel (.xlsx, .xls)
                           </p>
                         </div>
                       )}
@@ -505,27 +478,6 @@ const EventRegistration = () => {
                     </>
                   ) : step.type === "settings" ? (
                     <>
-                      {isJsonImported && (
-                        <motion.div
-                          className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200"
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                        >
-                          <div className="text-sm font-medium text-blue-800 mb-2">
-                            📄 JSONからインポートされたイベント
-                          </div>
-                          <div className="text-xs text-blue-700 space-y-1">
-                            <div>
-                              <strong>イベント名:</strong> {formData.eventname}
-                            </div>
-                            <div>
-                              <strong>参加者数:</strong>{" "}
-                              {formData.participants.length}名
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-
                       <div>
                         <Checkbox
                           checked={formData.arrowtoday}
