@@ -636,7 +636,7 @@ function App() {
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">アプリケーション</span>
                   <span className="font-mono font-semibold text-gray-800">
-                    v1.0.0
+                    v1.1.0
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
