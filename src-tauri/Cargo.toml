@@ -1,6 +1,6 @@
 [package]
 name = "list-checker-tauri"
-version = "1.0.2"
+version = "1.0.3"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
