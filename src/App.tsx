@@ -636,12 +636,12 @@ function App() {
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">アプリケーション</span>
                   <span className="font-mono font-semibold text-gray-800">
-                    v1.1.0
+                    v1.1.1
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">ビルド日</span>
-                  <span className="text-sm text-gray-800">2025年10月2日</span>
+                  <span className="text-sm text-gray-800">2025年10月3日</span>
                 </div>
               </div>
             </div>

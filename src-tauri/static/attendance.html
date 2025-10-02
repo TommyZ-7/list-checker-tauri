@@ -414,6 +414,25 @@
               </div>
             </div>
           </div>
+
+          <!-- nolist用統計 (当日参加者数のみ) -->
+          <div
+            id="nolistStats"
+            class="bg-emerald-50 w-full rounded-lg p-4 mt-4 animate-fadeIn"
+            style="display: none"
+          >
+            <div class="flex justify-between items-center mb-2">
+              <h3 class="font-medium text-emerald-900">出席状況</h3>
+            </div>
+
+            <div class="bg-white p-3 rounded-md shadow-sm">
+              <p class="text-sm text-gray-500">当日参加者数</p>
+              <p class="text-2xl font-bold text-emerald-800 text-center">
+                <span id="nolistTodayCount">0</span>
+                <span class="text-sm font-normal text-gray-500"> 人</span>
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -967,9 +986,16 @@
         if (settings.soukai) {
           document.getElementById("soukaiStats").style.display = "block";
           document.getElementById("normalStats").style.display = "none";
+          document.getElementById("nolistStats").style.display = "none";
+        } else if (settings.nolist) {
+          // nolistモードの場合は当日参加者数のみ表示
+          document.getElementById("soukaiStats").style.display = "none";
+          document.getElementById("normalStats").style.display = "none";
+          document.getElementById("nolistStats").style.display = "block";
         } else {
           document.getElementById("soukaiStats").style.display = "none";
           document.getElementById("normalStats").style.display = "block";
+          document.getElementById("nolistStats").style.display = "none";
 
           if (settings.arrowtoday) {
             document.getElementById("todayStats").style.display = "block";
@@ -1008,6 +1034,10 @@
           document.getElementById("soukaiAttendedCount").textContent =
             attendedTotal;
           document.getElementById("soukaiTotal").textContent = total;
+        } else if (settings.nolist) {
+          // nolistモードの場合は当日参加者数のみ表示
+          document.getElementById("nolistTodayCount").textContent =
+            onTheDay.length;
         } else {
           document.getElementById("attendedCount").textContent = attendedCount;
           document.getElementById("totalCount").textContent = totalCount;
