@@ -9,6 +9,8 @@ import {
   ListCheck,
   ListPlus,
   ListTodo,
+  Info,
+  X,
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { Button } from "@yamada-ui/react";
@@ -63,6 +65,7 @@ function App() {
   const [serverRunning, setServerRunning] = useState(false);
   const [localIP, setLocalIP] = useState<string>("");
   const serverPort = 12345;
+  const [showInfoModal, setShowInfoModal] = useState(false);
   const [jsonData, setJsonData] = useState<parsedJsonData>({
     attendees: [],
     today: [],
@@ -599,6 +602,125 @@ function App() {
     </div>
   );
 
+  const renderInfoModal = () => {
+    if (!showInfoModal) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 overflow-hidden">
+          {/* ヘッダー */}
+          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <h2 className="text-2xl font-bold mb-2">出席管理システム</h2>
+                <p className="text-blue-100">List Checker Tauri</p>
+              </div>
+              <button
+                onClick={() => setShowInfoModal(false)}
+                className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+
+          {/* コンテンツ */}
+          <div className="p-6 space-y-6">
+            {/* バージョン情報 */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                <div className="w-1 h-5 bg-blue-500 mr-3 rounded"></div>
+                バージョン情報
+              </h3>
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">アプリケーション</span>
+                  <span className="font-mono font-semibold text-gray-800">
+                    v1.0.0
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">ビルド日</span>
+                  <span className="text-sm text-gray-800">2025年10月2日</span>
+                </div>
+              </div>
+            </div>
+
+            {/* GitHubリポジトリ情報 */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                <div className="w-1 h-5 bg-purple-500 mr-3 rounded"></div>
+                GitHubリポジトリ
+              </h3>
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-4 border border-gray-200">
+                {/* リポジトリ説明 */}
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600 mb-2">
+                    List Checker Tauri
+                  </p>
+                  <a
+                    href="https://github.com/TommyZ-7/list-checker-tauri"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center"
+                  >
+                    <span className="font-mono">
+                      TommyZ-7/list-checker-tauri
+                    </span>
+                    <svg
+                      className="w-4 h-4 ml-1"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                      />
+                    </svg>
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* ライセンス情報 */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                <div className="w-1 h-5 bg-yellow-500 mr-3 rounded"></div>
+                システム情報
+              </h3>
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">HTTPポート</span>
+                  <span className="font-mono text-gray-800">8080</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Socket.IOポート</span>
+                  <span className="font-mono text-gray-800">12345</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">識別子</span>
+                  <span className="font-mono text-xs text-gray-800">
+                    com.list-checker-tauri.app
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* フッター */}
+          <div className="bg-gray-50 px-6 py-4 border-t">
+            <p className="text-center text-sm text-gray-600">
+              © 2025 出席管理システム. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderMainMenu = () => (
     <div
       className={`flex flex-col items-center justify-center h-screen gap-4 transition-all duration-300 ease-in-out ${
@@ -633,6 +755,23 @@ function App() {
 
   return (
     <main className="custom_font bg-gray-50 min-h-screen relative">
+      {/* 情報ボタン（左下にフロート表示） */}
+      {currentView === "main" && (
+        <button
+          onClick={() => setShowInfoModal(true)}
+          className="fixed bottom-4 left-4 z-10 bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-110 group"
+          title="ソフトウェア情報"
+        >
+          <Info className="w-6 h-6" />
+          <span className="absolute left-full ml-2 px-3 py-1 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+            ソフトウェア情報
+          </span>
+        </button>
+      )}
+
+      {/* 情報モーダル */}
+      {renderInfoModal()}
+
       {/* 右上に移動するアイコン */}
       {selectedIcon && currentView !== "main" && (
         <div className="fixed top-4 right-4 z-10">
