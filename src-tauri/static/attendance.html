@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>出席登録ページ</title>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      @keyframes fadeInDown {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      @keyframes flash {
+        0%,
+        100% {
+          background-color: transparent;
+        }
+        50% {
+          background-color: rgba(16, 185, 129, 0.2);
+        }
+      }
+
+      .animate-fadeInDown {
+        animation: fadeInDown 0.5s ease-out;
+      }
+
+      .animate-fadeInUp {
+        animation: fadeInUp 0.5s ease-out;
+      }
+
+      .animate-fadeIn {
+        animation: fadeIn 0.5s ease-out;
+      }
+
+      .animate-flash {
+        animation: flash 0.6s ease-in-out;
+      }
+
+      .sticky {
+        position: sticky;
+      }
+
+      .top-0 {
+        top: 0;
+      }
+
+      .top-40 {
+        top: 10rem;
+      }
+
+      .z-50 {
+        z-index: 50;
+      }
+
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #555;
+      }
+
+      .gradient-text {
+        background: linear-gradient(to left, #7928ca, #ff0080);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      /* Toggle Switch Styles */
+      .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 48px;
+        height: 24px;
+      }
+
+      .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #cbd5e0;
+        transition: 0.3s;
+        border-radius: 24px;
+      }
+
+      .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+      }
+
+      input:checked + .toggle-slider {
+        background-color: #3b82f6;
+      }
+
+      input:checked + .toggle-slider:before {
+        transform: translateX(24px);
+      }
+
+      input:disabled + .toggle-slider {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      /* Connection Status Styles */
+      .connection-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+      }
+
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+
+      .status-connected {
+        background-color: #d1fae5;
+        color: #065f46;
+      }
+
+      .status-connected .status-dot {
+        background-color: #10b981;
+      }
+
+      .status-connecting {
+        background-color: #fef3c7;
+        color: #92400e;
+      }
+
+      .status-connecting .status-dot {
+        background-color: #f59e0b;
+      }
+
+      .status-disconnected {
+        background-color: #fee2e2;
+        color: #991b1b;
+      }
+
+      .status-disconnected .status-dot {
+        background-color: #ef4444;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 min-h-screen">
+    <!-- ヘッダー -->
+    <header class="bg-white shadow-lg sticky top-0 z-50 animate-fadeInDown">
+      <div
+        class="container mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between"
+      >
+        <h1 id="eventName" class="text-5xl font-bold gradient-text">
+          出席登録システム
+        </h1>
+        <div class="flex items-center gap-4">
+          <!-- 接続状態インジケーター -->
+          <div
+            id="connectionStatus"
+            class="connection-status status-connecting"
+          >
+            <span class="status-dot"></span>
+            <span id="connectionText">接続中...</span>
+          </div>
+          <button
+            onclick="toggleMenu()"
+            class="bg-white hover:bg-gray-100 px-4 py-2 rounded-lg shadow-md flex items-center gap-2"
+          >
+            <svg
+              class="w-6 h-6 text-gray-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 6h16M4 12h16M4 18h16"
+              ></path>
+            </svg>
+            Menu
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div
+      class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 sm:grid-cols-2 gap-4"
+    >
+      <!-- 学籍番号入力 -->
+      <div>
+        <div
+          class="mb-10 p-6 bg-white rounded-xl shadow-2xl animate-fadeInUp sticky top-40"
+        >
+          <div class="mb-4 w-full">
+            <div class="relative">
+              <input
+                type="text"
+                id="studentInput"
+                placeholder="学籍番号を入力"
+                class="w-full h-15 px-4 py-3 border-2 border-indigo-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 text-2xl"
+                autocomplete="off"
+                autocorrect="off"
+                autofocus
+              />
+              <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                <button
+                  onclick="submitAttendance()"
+                  class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-2"
+                >
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M5 13l4 4L19 7"
+                    ></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <p class="text-sm text-gray-500 mt-2">
+              学籍番号を入力してEnterキーを押すと出席が登録されます
+            </p>
+          </div>
+
+          <!-- 出席状況サマリー（総会モード） -->
+          <div
+            id="soukaiStats"
+            class="bg-indigo-50 w-full rounded-lg p-4 mt-4 animate-fadeIn"
+            style="display: none"
+          >
+            <div class="flex justify-between items-center mb-2">
+              <h3 class="font-medium text-indigo-900">出席状況</h3>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div class="bg-white p-3 rounded-md shadow-sm">
+                <p class="text-sm text-gray-500">委任状数</p>
+                <p class="text-2xl font-bold text-indigo-800 text-center">
+                  <span id="soukaiProxyCount">0</span>
+                  <span class="text-sm font-normal text-gray-500"> 枚</span>
+                </p>
+              </div>
+
+              <div class="bg-white p-3 rounded-md shadow-sm">
+                <p class="text-sm text-gray-500">出席者数</p>
+                <p class="text-2xl font-bold text-indigo-800 text-center">
+                  <span id="soukaiAttendedCount">0</span>
+                  <span class="text-sm font-normal text-gray-500"> 名</span>
+                </p>
+              </div>
+            </div>
+
+            <div class="bg-white p-3 rounded-md shadow-sm mt-4">
+              <p class="text-sm text-gray-500">総数</p>
+              <p class="text-2xl font-bold text-indigo-800 text-center">
+                <span id="soukaiTotal">0</span>
+                <span class="text-sm font-normal text-gray-500"> 名</span>
+              </p>
+            </div>
+          </div>
+
+          <!-- 出席状況サマリー（通常モード） -->
+          <div id="normalStats" class="animate-fadeIn">
+            <div class="bg-indigo-50 w-full rounded-lg p-4 mt-4">
+              <div class="flex justify-between items-center mb-2">
+                <h3 class="font-medium text-indigo-900">出席状況</h3>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div class="bg-white p-3 rounded-md shadow-sm">
+                  <p class="text-sm text-gray-500">出席者数</p>
+                  <p class="text-2xl font-bold text-indigo-800 text-center">
+                    <span id="attendedCount">0</span>
+                    <span class="text-sm font-normal text-gray-500">
+                      / <span id="totalCount">0</span>人</span
+                    >
+                  </p>
+                </div>
+
+                <div class="bg-white p-3 rounded-md shadow-sm">
+                  <p class="text-sm text-gray-500">出席率</p>
+                  <p class="text-2xl font-bold text-indigo-800 text-center">
+                    <span id="attendanceRate">0</span>
+                    <span class="text-sm font-normal text-gray-500">%</span>
+                  </p>
+                </div>
+              </div>
+
+              <div class="mt-4 bg-white p-3 rounded-md shadow-sm">
+                <div class="relative pt-1">
+                  <div
+                    class="overflow-hidden h-2 text-xs flex rounded bg-indigo-200"
+                  >
+                    <div
+                      id="progressBar"
+                      style="width: 0%"
+                      class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-indigo-600 transition-all duration-1000 ease-out"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 当日参加統計 -->
+            <div
+              id="todayStats"
+              class="bg-emerald-50 w-full rounded-lg p-4 mt-4"
+              style="display: none"
+            >
+              <div class="flex justify-between items-center mb-2">
+                <h3 class="font-medium text-emerald-900">その他</h3>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div class="bg-white p-3 rounded-md shadow-sm">
+                  <p class="text-sm text-gray-500">当日参加</p>
+                  <p class="text-2xl font-bold text-emerald-800 text-center">
+                    <span id="todayCount">0</span>
+                    <span class="text-sm font-normal text-gray-500"> 人</span>
+                  </p>
+                </div>
+                <div class="bg-white p-3 rounded-md shadow-sm">
+                  <p class="text-sm text-gray-500">合計数</p>
+                  <p class="text-2xl font-bold text-emerald-800 text-center">
+                    <span id="totalWithToday">0</span>
+                    <span class="text-sm font-normal text-gray-500"> 人</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 学生リスト -->
+      <div>
+        <div
+          class="h-full min-h-[400px] bg-white shadow-lg rounded-xl p-6 animate-fadeInUp"
+        >
+          <h2 class="text-2xl font-bold mb-4 text-gray-800" id="listTitle">
+            出席者リスト
+          </h2>
+          <div class="overflow-x-auto">
+            <table class="min-w-full">
+              <thead>
+                <tr class="bg-gray-100">
+                  <th
+                    class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    学籍番号
+                  </th>
+                  <th
+                    id="statusHeader"
+                    class="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    状態
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="attendeeList" class="divide-y divide-gray-200">
+                <!-- 動的に生成 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- メニューオーバーレイ -->
+    <div
+      id="menuOverlay"
+      class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-40"
+      style="display: none"
+      onclick="toggleMenu()"
+    ></div>
+
+    <!-- メニュードロワー -->
+    <div
+      id="menuDrawer"
+      class="fixed right-0 top-0 h-full w-96 bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300"
+    >
+      <div class="p-6 h-full overflow-y-auto">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold">設定</h2>
+          <button
+            onclick="toggleMenu()"
+            class="text-gray-500 hover:text-gray-700"
+          >
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              ></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- イベント情報 -->
+        <div class="border border-gray-200 rounded-lg p-4 mb-4">
+          <h3 class="text-xl font-bold mb-4">イベント情報</h3>
+          <div class="space-y-2">
+            <div>
+              <p class="text-sm text-gray-500">イベント名</p>
+              <p id="menuEventName" class="text-lg font-semibold">-</p>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">イベント情報</p>
+              <p id="menuEventInfo" class="text-lg">-</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 設定 -->
+        <div class="border border-gray-200 rounded-lg p-4 mb-4">
+          <h3 class="text-xl font-bold mb-4">設定</h3>
+          <div class="space-y-4">
+            <!-- 当日参加を許可 -->
+            <div class="flex items-center justify-between">
+              <label class="text-gray-700 font-medium">当日参加を許可</label>
+              <label class="toggle-switch">
+                <input
+                  type="checkbox"
+                  id="arrowtodayToggle"
+                  onchange="toggleSetting('arrowtoday', this.checked)"
+                />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <!-- 自動で当日参加登録 -->
+            <div class="flex items-center justify-between">
+              <label class="text-gray-700 font-medium"
+                >自動で当日参加登録</label
+              >
+              <label class="toggle-switch">
+                <input
+                  type="checkbox"
+                  id="autotodayToggle"
+                  onchange="toggleSetting('autotodayregister', this.checked)"
+                />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <!-- 総会モード (表示のみ) -->
+            <div class="flex items-center justify-between">
+              <label class="text-gray-700">総会モード</label>
+              <span id="soukaiDisplay" class="text-sm px-3 py-1 rounded-full"
+                >-</span
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- ダウンロード -->
+        <div class="border border-gray-200 rounded-lg p-4 mb-4">
+          <h3 class="text-xl font-bold mb-4">ダウンロード</h3>
+
+          <!-- タブボタン -->
+          <div class="flex border-b border-gray-300 mb-4">
+            <button
+              id="tabExcel"
+              onclick="switchDownloadTab('excel')"
+              class="flex-1 py-2 px-4 text-center font-medium transition-colors border-b-2 border-blue-500 text-blue-600 cursor-pointer"
+            >
+              Excel
+            </button>
+            <button
+              id="tabCSV"
+              onclick="switchDownloadTab('csv')"
+              class="flex-1 py-2 px-4 text-center font-medium transition-colors border-b-2 border-transparent text-gray-600 hover:text-gray-800 cursor-pointer"
+            >
+              CSV
+            </button>
+            <button
+              id="tabJSON"
+              onclick="switchDownloadTab('json')"
+              class="flex-1 py-2 px-4 text-center font-medium transition-colors border-b-2 border-transparent text-gray-600 hover:text-gray-800 cursor-pointer"
+            >
+              JSON
+            </button>
+          </div>
+
+          <!-- タブコンテンツ -->
+          <div id="downloadContent" class="space-y-3">
+            <p class="text-sm text-gray-600 mb-3">
+              Excel形式でダウンロードします。
+            </p>
+            <button
+              onclick="downloadExcel()"
+              class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors cursor-pointer"
+            >
+              Excelをダウンロード
+            </button>
+          </div>
+        </div>
+
+        <button
+          onclick="toggleMenu()"
+          class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-lg"
+        >
+          とじる
+        </button>
+      </div>
+    </div>
+
+    <script>
+      // グローバル変数
+      let socket;
+      let eventData = null;
+      let expectedAttendees = [];
+      let onTheDay = [];
+      let settings = {
+        arrowtoday: false,
+        autotodayregister: false,
+        soukai: false,
+        nolist: false,
+      };
+
+      // URLパラメータから取得
+      const urlParams = new URLSearchParams(window.location.search);
+      const uuid = urlParams.get("uuid");
+      const serverAddress =
+        urlParams.get("server") ||
+        window.location.host.split(":")[0] + ":12345";
+
+      // デバッグログ
+      console.log("URL:", window.location.href);
+      console.log("URL Params:", urlParams.toString());
+      console.log("UUID:", uuid);
+      console.log("Server Address:", serverAddress);
+
+      // 初期化
+      window.addEventListener("load", () => {
+        if (!uuid || uuid === "null" || uuid === "undefined") {
+          showError(
+            "URLにUUIDパラメータが必要です。\n正しいURLでアクセスしてください。"
+          );
+          return;
+        }
+        connectToServer();
+        setupEventListeners();
+      });
+
+      // 接続状態を更新
+      function updateConnectionStatus(status) {
+        const statusEl = document.getElementById("connectionStatus");
+        const textEl = document.getElementById("connectionText");
+
+        // すべてのステータスクラスを削除
+        statusEl.classList.remove(
+          "status-connected",
+          "status-connecting",
+          "status-disconnected"
+        );
+
+        if (status === "connected") {
+          statusEl.classList.add("status-connected");
+          textEl.textContent = "接続済み";
+        } else if (status === "connecting") {
+          statusEl.classList.add("status-connecting");
+          textEl.textContent = "接続中...";
+        } else if (status === "disconnected") {
+          statusEl.classList.add("status-disconnected");
+          textEl.textContent = "切断";
+        }
+      }
+
+      // Socket.IO接続
+      function connectToServer() {
+        updateConnectionStatus("connecting");
+        socket = io(`http://${serverAddress}`);
+
+        socket.on("connect", () => {
+          console.log("Connected to server");
+          updateConnectionStatus("connected");
+          socket.emit("join", uuid);
+          socket.emit("sync_all_data", uuid);
+        });
+
+        socket.on("disconnect", () => {
+          console.log("Disconnected from server");
+          updateConnectionStatus("disconnected");
+        });
+
+        socket.on("connect_error", (error) => {
+          console.error("Connection error:", error);
+          updateConnectionStatus("disconnected");
+        });
+
+        socket.on("reconnecting", (attemptNumber) => {
+          console.log("Reconnecting... Attempt:", attemptNumber);
+          updateConnectionStatus("connecting");
+        });
+
+        socket.on("reconnect", () => {
+          console.log("Reconnected to server");
+          updateConnectionStatus("connected");
+          socket.emit("join", uuid);
+          socket.emit("sync_all_data", uuid);
+        });
+
+        socket.on("join_error", (errorMessage) => {
+          console.error("Join error:", errorMessage);
+          showError(errorMessage || "指定されたイベントが見つかりません");
+        });
+
+        socket.on("join_return", (data) => {
+          console.log("Event data received:", data);
+          if (!data || !data.eventname) {
+            showError("イベントデータの取得に失敗しました");
+            return;
+          }
+          eventData = data;
+          expectedAttendees = (data.participants || []).map((id) => ({
+            id,
+            attended: false,
+          }));
+          settings = {
+            arrowtoday: data.arrowtoday || false,
+            autotodayregister: data.autotodayregister || false,
+            soukai: data.soukai || false,
+            nolist: data.nolist || false,
+          };
+
+          document.getElementById("eventName").textContent =
+            data.eventname || "出席登録システム";
+          document.getElementById("menuEventName").textContent =
+            data.eventname || "-";
+          document.getElementById("menuEventInfo").textContent =
+            data.eventinfo || "-";
+
+          updateUI();
+          updateStats();
+        });
+
+        socket.on("register_attendees_return", (data) => {
+          console.log("Attendance data received:", data);
+          if (Array.isArray(data)) {
+            dataDeCompression(data);
+            updateUI();
+            updateStats();
+          }
+        });
+
+        socket.on("register_ontheday_return", (data) => {
+          console.log("Today data received:", data);
+          if (Array.isArray(data)) {
+            onTheDay = data;
+            updateUI();
+            updateStats();
+          }
+        });
+
+        socket.on("settings_change_return", (data) => {
+          console.log("Settings changed:", data);
+          // すべての設定を更新
+          if (data.arrowtoday !== undefined) {
+            settings.arrowtoday = data.arrowtoday;
+          }
+          if (data.autotodayregister !== undefined) {
+            settings.autotodayregister = data.autotodayregister;
+          }
+          if (data.soukai !== undefined) {
+            settings.soukai = data.soukai;
+          }
+          if (data.nolist !== undefined) {
+            settings.nolist = data.nolist;
+          }
+          updateUI();
+          updateStats();
+        });
+
+        // 設定更新イベント（他のクライアントからの変更を受信）
+        socket.on("update_settings_return", (data) => {
+          console.log("Settings updated from another client:", data);
+          // 設定オブジェクト全体を更新
+          if (data.arrowtoday !== undefined) {
+            settings.arrowtoday = data.arrowtoday;
+          }
+          if (data.autotodayregister !== undefined) {
+            settings.autotodayregister = data.autotodayregister;
+          }
+          if (data.soukai !== undefined) {
+            settings.soukai = data.soukai;
+          }
+          if (data.nolist !== undefined) {
+            settings.nolist = data.nolist;
+          }
+          updateUI();
+          updateStats();
+        });
+      }
+
+      // イベントリスナー設定
+      function setupEventListeners() {
+        const input = document.getElementById("studentInput");
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            submitAttendance();
+          }
+        });
+      }
+
+      // データ展開
+      function dataDeCompression(compressedData) {
+        const allIds = expectedAttendees.map((a) => a.id);
+        expectedAttendees = allIds.map((id, index) => ({
+          id,
+          attended: compressedData.includes(index),
+        }));
+      }
+
+      // データ圧縮
+      function dataCompression() {
+        return expectedAttendees
+          .map((attendee, index) => (attendee.attended ? index : -1))
+          .filter((index) => index !== -1);
+      }
+
+      // 出席登録
+      function submitAttendance() {
+        const input = document.getElementById("studentInput");
+        const studentId = input.value.trim();
+
+        if (!studentId) {
+          return;
+        }
+
+        input.value = "";
+        const existingAttendee = expectedAttendees.find(
+          (a) => a.id === studentId
+        );
+
+        if (existingAttendee) {
+          if (existingAttendee.attended) {
+            alert(`${studentId} は既に出席済みです。`);
+          } else {
+            existingAttendee.attended = true;
+            socket.emit("register_attendees", {
+              attendeeindex: dataCompression(),
+              uuid: uuid,
+            });
+            scrollToElement(studentId);
+            flashElement(studentId);
+            updateUI();
+            updateStats();
+          }
+        } else {
+          if (!settings.arrowtoday) {
+            alert(`${studentId} は出席者リストに含まれていません。`);
+          } else {
+            if (onTheDay.includes(studentId)) {
+              alert(`${studentId} は既に当日参加者に含まれています。`);
+            } else {
+              if (
+                settings.autotodayregister ||
+                confirm(`${studentId} を当日参加者として登録しますか？`)
+              ) {
+                onTheDay.push(studentId);
+                socket.emit("register_ontheday", {
+                  ontheday: onTheDay,
+                  uuid: uuid,
+                });
+                updateUI();
+                updateStats();
+              }
+            }
+          }
+        }
+
+        input.focus();
+      }
+
+      // エラー表示関数
+      function showError(message) {
+        // ページ全体をエラー表示に置き換え
+        document.body.innerHTML = `
+          <div class="flex items-center justify-center min-h-screen bg-gray-100">
+            <div class="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
+              <div class="flex flex-col items-center">
+                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                  <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">エラー</h2>
+                <p class="text-gray-600 text-center mb-6 whitespace-pre-line">${message}</p>
+                <button 
+                  onclick="window.close()" 
+                  class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200"
+                >
+                  閉じる
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // UI更新
+      function updateUI() {
+        // トグルスイッチの状態を同期
+        const arrowtodayToggle = document.getElementById("arrowtodayToggle");
+        const autotodayToggle = document.getElementById("autotodayToggle");
+
+        if (arrowtodayToggle) {
+          arrowtodayToggle.checked = settings.arrowtoday;
+
+          // 条件による有効/無効の制御
+          if (settings.soukai) {
+            // 総会モードの場合: 変更不可
+            arrowtodayToggle.disabled = true;
+          } else if (settings.nolist) {
+            // nolistモードの場合: 変更不可
+            arrowtodayToggle.disabled = true;
+          } else {
+            // それ以外: 変更可能
+            arrowtodayToggle.disabled = false;
+          }
+        }
+
+        if (autotodayToggle) {
+          autotodayToggle.checked = settings.autotodayregister;
+
+          // 条件による有効/無効の制御
+          if (settings.soukai) {
+            // 総会モードの場合: 変更不可
+            autotodayToggle.disabled = true;
+          } else {
+            // それ以外（nolistモードを含む）: 変更可能
+            autotodayToggle.disabled = false;
+          }
+        }
+
+        // 設定表示の更新（総会モードのみ表示）
+        const soukaiEl = document.getElementById("soukaiDisplay");
+        soukaiEl.textContent = settings.soukai ? "有効" : "無効";
+        soukaiEl.className = settings.soukai
+          ? "text-sm px-3 py-1 rounded-full bg-green-100 text-green-800"
+          : "text-sm px-3 py-1 rounded-full bg-gray-100 text-gray-800";
+
+        // モード切り替え
+        if (settings.soukai) {
+          document.getElementById("soukaiStats").style.display = "block";
+          document.getElementById("normalStats").style.display = "none";
+        } else {
+          document.getElementById("soukaiStats").style.display = "none";
+          document.getElementById("normalStats").style.display = "block";
+
+          if (settings.arrowtoday) {
+            document.getElementById("todayStats").style.display = "block";
+          } else {
+            document.getElementById("todayStats").style.display = "none";
+          }
+        }
+
+        // リスト更新
+        if (settings.nolist) {
+          document.getElementById("listTitle").textContent = "当日参加者リスト";
+          document.getElementById("statusHeader").style.display = "none";
+          renderOnlyTodayList();
+        } else {
+          document.getElementById("listTitle").textContent = "出席者リスト";
+          document.getElementById("statusHeader").style.display = "table-cell";
+          renderAttendeeList();
+        }
+      }
+
+      // 統計更新
+      function updateStats() {
+        const attendedCount = expectedAttendees.filter(
+          (a) => a.attended
+        ).length;
+        const totalCount = expectedAttendees.length;
+        const rate =
+          totalCount > 0 ? Math.round((attendedCount / totalCount) * 100) : 0;
+
+        if (settings.soukai) {
+          const proxyCount = totalCount - attendedCount;
+          const attendedTotal = attendedCount + onTheDay.length;
+          const total = proxyCount + attendedTotal;
+
+          document.getElementById("soukaiProxyCount").textContent = proxyCount;
+          document.getElementById("soukaiAttendedCount").textContent =
+            attendedTotal;
+          document.getElementById("soukaiTotal").textContent = total;
+        } else {
+          document.getElementById("attendedCount").textContent = attendedCount;
+          document.getElementById("totalCount").textContent = totalCount;
+          document.getElementById("attendanceRate").textContent = rate;
+          document.getElementById("progressBar").style.width = rate + "%";
+
+          if (settings.arrowtoday) {
+            document.getElementById("todayCount").textContent = onTheDay.length;
+            document.getElementById("totalWithToday").textContent =
+              attendedCount + onTheDay.length;
+          }
+        }
+      }
+
+      // 出席者リスト描画
+      function renderAttendeeList() {
+        const tbody = document.getElementById("attendeeList");
+        tbody.innerHTML = "";
+
+        expectedAttendees.forEach((attendee) => {
+          const row = document.createElement("tr");
+          row.id = `row-${attendee.id}`;
+          row.className = "hover:bg-gray-50 transition-colors duration-150";
+
+          row.innerHTML = `
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        <span class="text-3xl font-medium">${attendee.id}</span>
+                    </td>
+                    <td class="py-3 px-4 whitespace-nowrap text-right">
+                        ${
+                          attendee.attended
+                            ? `<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                <svg class="mr-1.5 h-4 w-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                出席
+                            </span>`
+                            : `<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                                ${settings.soukai ? "委任状" : "未出席"}
+                            </span>`
+                        }
+                    </td>
+                `;
+          tbody.appendChild(row);
+        });
+      }
+
+      // 当日参加者のみ描画
+      function renderOnlyTodayList() {
+        const tbody = document.getElementById("attendeeList");
+        tbody.innerHTML = "";
+
+        onTheDay.forEach((studentId) => {
+          const row = document.createElement("tr");
+          row.id = `row-${studentId}`;
+          row.className = "hover:bg-gray-50 transition-colors duration-150";
+
+          row.innerHTML = `
+                    <td class="py-3 px-4 whitespace-nowrap" colspan="2">
+                        <span class="text-3xl font-medium">${studentId}</span>
+                    </td>
+                `;
+          tbody.appendChild(row);
+        });
+      }
+
+      // 要素までスクロール
+      function scrollToElement(id) {
+        const element = document.getElementById(`row-${id}`);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
+
+      // 要素をフラッシュ
+      function flashElement(id) {
+        const element = document.getElementById(`row-${id}`);
+        if (element) {
+          element.classList.add("animate-flash");
+          setTimeout(() => {
+            element.classList.remove("animate-flash");
+          }, 600);
+        }
+      }
+
+      // 設定変更
+      function toggleSetting(settingName, value) {
+        // ローカルの設定を更新
+        settings[settingName] = value;
+
+        // サーバーに変更を送信
+        if (socket && socket.connected) {
+          socket.emit("update_settings", {
+            uuid: uuid,
+            settings: settings,
+          });
+        }
+
+        // UIを更新
+        updateUI();
+        updateStats();
+      }
+
+      // メニュー切り替え
+      function toggleMenu() {
+        const overlay = document.getElementById("menuOverlay");
+        const drawer = document.getElementById("menuDrawer");
+
+        if (overlay.style.display === "none") {
+          overlay.style.display = "block";
+          setTimeout(() => {
+            drawer.style.transform = "translateX(0)";
+            // メニューを開いた時にダウンロードタブを初期化
+            switchDownloadTab(currentDownloadTab);
+          }, 10);
+        } else {
+          drawer.style.transform = "translateX(100%)";
+          setTimeout(() => {
+            overlay.style.display = "none";
+          }, 300);
+        }
+      }
+
+      // ダウンロードタブの状態管理
+      let currentDownloadTab = "excel";
+
+      // ダウンロードタブ切り替え
+      function switchDownloadTab(tab) {
+        currentDownloadTab = tab;
+
+        // タブボタンのスタイル更新
+        const tabExcel = document.getElementById("tabExcel");
+        const tabCSV = document.getElementById("tabCSV");
+        const tabJSON = document.getElementById("tabJSON");
+
+        const activeClass =
+          "flex-1 py-2 px-4 text-center font-medium transition-colors border-b-2 border-blue-500 text-blue-600 cursor-pointer";
+        const inactiveClass =
+          "flex-1 py-2 px-4 text-center font-medium transition-colors border-b-2 border-transparent text-gray-600 hover:text-gray-800 cursor-pointer";
+
+        // すべてのタブを非アクティブに
+        tabExcel.className = inactiveClass;
+        tabCSV.className = inactiveClass;
+        tabJSON.className = inactiveClass;
+
+        // 選択されたタブをアクティブに
+        if (tab === "excel") {
+          tabExcel.className = activeClass;
+        } else if (tab === "csv") {
+          tabCSV.className = activeClass;
+        } else if (tab === "json") {
+          tabJSON.className = activeClass;
+        }
+
+        // コンテンツ更新
+        const content = document.getElementById("downloadContent");
+        if (tab === "excel") {
+          content.innerHTML = `
+            <p class="text-sm text-gray-600 mb-3">Excel形式でダウンロードします。</p>
+            <button
+              onclick="downloadExcel()"
+              class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+            >
+              Excelをダウンロード
+            </button>
+          `;
+        } else if (tab === "csv") {
+          content.innerHTML = `
+            <p class="text-sm text-gray-600 mb-3">CSV形式でダウンロードします。</p>
+            <button
+              onclick="downloadCSV()"
+              class="w-full bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+            >
+              CSVをダウンロード
+            </button>
+          `;
+        } else if (tab === "json") {
+          content.innerHTML = `
+            <p class="text-sm text-gray-600 mb-3">JSON形式でダウンロードします。</p>
+            <button
+              onclick="downloadJSON()"
+              class="w-full bg-purple-500 hover:bg-purple-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+            >
+              JSONをダウンロード
+            </button>
+          `;
+        }
+      }
+
+      // Excel ダウンロード
+      function downloadExcel() {
+        if (
+          (!expectedAttendees || expectedAttendees.length === 0) &&
+          (!onTheDay || onTheDay.length === 0)
+        ) {
+          alert("データがありません");
+          return;
+        }
+
+        // データ準備
+        const data = [["学籍番号", "出席状況", "出席時刻"]];
+
+        if (expectedAttendees && expectedAttendees.length > 0) {
+          expectedAttendees.forEach((attendee) => {
+            data.push([
+              attendee.id,
+              attendee.attended
+                ? "出席"
+                : settings.soukai
+                ? "委任状"
+                : "未出席",
+              attendee.attendedAt || "",
+            ]);
+          });
+        }
+
+        // 当日参加者を追加
+        if (onTheDay && onTheDay.length > 0) {
+          data.push(["", "", ""]); // 空行
+          data.push(["当日参加者", "", ""]);
+          onTheDay.forEach((id) => {
+            data.push([id, "当日参加", ""]);
+          });
+        }
+
+        // Excelファイル作成
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "出席データ");
+
+        // ダウンロード
+        const fileName = `attendance_${uuid}_${
+          new Date().toISOString().split("T")[0]
+        }.xlsx`;
+        XLSX.writeFile(wb, fileName);
+      }
+
+      // CSV ダウンロード
+      function downloadCSV() {
+        if (
+          (!expectedAttendees || expectedAttendees.length === 0) &&
+          (!onTheDay || onTheDay.length === 0)
+        ) {
+          alert("データがありません");
+          return;
+        }
+
+        // データ準備
+        const data = [{ id: "学籍番号", status: "出席状況", time: "出席時刻" }];
+
+        if (expectedAttendees && expectedAttendees.length > 0) {
+          expectedAttendees.forEach((attendee) => {
+            data.push({
+              id: attendee.id,
+              status: attendee.attended
+                ? "出席"
+                : settings.soukai
+                ? "委任状"
+                : "未出席",
+              time: attendee.attendedAt || "",
+            });
+          });
+        }
+
+        // 当日参加者を追加
+        if (onTheDay && onTheDay.length > 0) {
+          data.push({ id: "", status: "", time: "" }); // 空行
+          data.push({ id: "当日参加者", status: "", time: "" });
+          onTheDay.forEach((id) => {
+            data.push({ id: id, status: "当日参加", time: "" });
+          });
+        }
+
+        // CSV文字列作成
+        const csv = Papa.unparse(data, {
+          quotes: true,
+          header: false,
+        });
+
+        // ダウンロード
+        const blob = new Blob(["\uFEFF" + csv], {
+          type: "text/csv;charset=utf-8;",
+        });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute(
+          "download",
+          `attendance_${uuid}_${new Date().toISOString().split("T")[0]}.csv`
+        );
+        link.style.visibility = "hidden";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
+      // JSON ダウンロード
+      function downloadJSON() {
+        if (
+          (!expectedAttendees || expectedAttendees.length === 0) &&
+          (!onTheDay || onTheDay.length === 0)
+        ) {
+          alert("データがありません");
+          return;
+        }
+
+        // データ準備
+        const jsonData = {
+          uuid: uuid,
+          exportDate: new Date().toISOString(),
+          settings: settings,
+          expectedAttendees: expectedAttendees.map((attendee) => ({
+            id: attendee.id,
+            attended: attendee.attended,
+            attendedAt: attendee.attendedAt || null,
+          })),
+          onTheDay: onTheDay,
+        };
+
+        // JSON文字列作成
+        const jsonString = JSON.stringify(jsonData, null, 2);
+
+        // ダウンロード
+        const blob = new Blob([jsonString], { type: "application/json" });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute(
+          "download",
+          `attendance_${uuid}_${new Date().toISOString().split("T")[0]}.json`
+        );
+        link.style.visibility = "hidden";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    </script>
+  </body>
+</html>

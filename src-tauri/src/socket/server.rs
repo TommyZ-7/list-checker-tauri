@@ -1,6 +1,7 @@
 use socketioxide::{extract::{Data, SocketRef}, SocketIo};
 use tower::ServiceBuilder;
 use tower_http::cors::CorsLayer;
+use tower_http::services::ServeDir;
 use crate::get_app_state;
 use crate::get_app_state2;
 use crate::get_app_state3;
@@ -38,13 +39,28 @@ async fn on_new_message(socket: SocketRef, Data(data): Data<String>) {
 
 async fn join_data(socket: SocketRef, Data(data): Data<String>) {
     println!("Client connected: {}", socket.id);
-    println!("Data received for join: {}", data);
+    println!("Data received for join: {:?}", data);
+    println!("Data type: {}", std::any::type_name_of_val(&data));
+    println!("Data length: {}", data.len());
+    
+    if data.is_empty() || data == "undefined" || data == "null" {
+        eprintln!("Invalid UUID received: {}", data);
+        if let Err(e) = socket.emit("join_error", "無効なUUIDです") {
+            eprintln!("Failed to send error message: {}", e);
+        }
+        return;
+    }
+    
     let app_state = get_app_state();
     
     let key = data.clone() + ":datas";
     let return_data = app_state.get(&key);
     if return_data.is_none() {
         eprintln!("No data found for key: {}", key);
+        // UUIDが存在しない場合、エラーを返す
+        if let Err(e) = socket.emit("join_error", "指定されたイベントが見つかりません") {
+            eprintln!("Failed to send error message: {}", e);
+        }
         return;
     }
     let return_data = return_data.unwrap();
@@ -62,7 +78,12 @@ async fn join_data(socket: SocketRef, Data(data): Data<String>) {
 }
 
 async fn sync_all_data(socket: SocketRef, Data(data): Data<String>) {
-    println!("Received sync_all_data from {}: {}", socket.id, data);
+    println!("Received sync_all_data from {}: {:?}", socket.id, data);
+    
+    if data.is_empty() || data == "undefined" || data == "null" {
+        eprintln!("Invalid UUID received in sync_all_data: {}", data);
+        return;
+    }
     
     // ここで全データを同期するロジックを実装
     let app_state = get_app_state2();
@@ -187,7 +208,31 @@ struct SettingsChangeData{
     autotodayregister: bool,
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+struct UpdateSettingsData {
+    uuid: String,
+    settings: crate::Settings,
+}
 
+async fn update_settings(socket: SocketRef, Data(data): Data<UpdateSettingsData>) {
+    println!("Update settings from client: {:?}", data);
+
+    let app_state = get_app_state4();
+    let key = data.uuid.clone() + ":settings";
+
+    // 設定をストレージに保存
+    app_state.insert(key.clone(), data.settings.clone());
+
+    // 設定変更を他の全クライアントにブロードキャスト
+    if let Err(e) = socket.broadcast().emit("update_settings_return", &data.settings).await {
+        eprintln!("Failed to broadcast settings update: {}", e);
+    }
+    
+    // 送信元クライアントにも確認を返す
+    if let Err(e) = socket.emit("update_settings_return", &data.settings) {
+        eprintln!("Failed to send settings update confirmation: {}", e);
+    }
+}
 
 async fn settings_change(socket: SocketRef, Data(data): Data<SettingsData>) {
     // ここに設定変更のロジックを実装
@@ -230,7 +275,18 @@ pub async fn start_socketio_server(port: u16) -> Result<(), Box<dyn std::error::
         s.on("register_attendees", register_attendees);
         s.on("register_ontheday" , register_ontheday);
         s.on("settings_change", settings_change);
+        s.on("update_settings", update_settings);
         s.on("sync_all_data", sync_all_data);
+    });
+
+    let my_domain = local_ip().unwrap();
+
+    // 静的ファイル配信用のHTTPサーバーを別ポートで起動
+    let http_port = 8080;
+    tokio::spawn(async move {
+        if let Err(e) = start_http_server(http_port).await {
+            eprintln!("Failed to start HTTP server: {}", e);
+        }
     });
 
     // Create the app with CORS and Socket.IO layers
@@ -239,14 +295,49 @@ pub async fn start_socketio_server(port: u16) -> Result<(), Box<dyn std::error::
             .layer(CorsLayer::permissive())
             .layer(layer));
 
-    let my_domain = local_ip().unwrap();
-
     // Start the server
     let listener = tokio::net::TcpListener::bind(format!("{}:{}", my_domain, port)).await?;
-    println!("Socket.IO server listening on port {}", port);
+    println!("Socket.IO server listening on {}:{}", my_domain, port);
     
     *IS_SERVER_RUNNING.lock().unwrap() = true;
 
+    axum::serve(listener, app).await?;
+    Ok(())
+}
+
+async fn start_http_server(port: u16) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let my_domain = local_ip().unwrap();
+    
+    // 静的ファイルのパスを取得
+    // まず実行ファイルと同じディレクトリのstaticフォルダを探す
+    let exe_dir = std::env::current_exe()?
+        .parent()
+        .ok_or("Failed to get parent directory")?
+        .to_path_buf();
+    
+    let static_dir = if exe_dir.join("static").exists() {
+        // リリースビルド: 実行ファイルと同じディレクトリのstatic
+        exe_dir.join("static")
+    } else {
+        // 開発モード: src-tauri/static
+        std::env::current_dir()?.join("src-tauri").join("static")
+    };
+    
+    // 静的ファイルが存在しない場合は作成
+    if !static_dir.exists() {
+        println!("Warning: Static directory does not exist, creating: {}", static_dir.display());
+        std::fs::create_dir_all(&static_dir)?;
+    }
+
+    // 静的ファイル配信用のルーター
+    let app = axum::Router::new()
+        .fallback_service(ServeDir::new(&static_dir))
+        .layer(CorsLayer::permissive());
+
+    let listener = tokio::net::TcpListener::bind(format!("{}:{}", my_domain, port)).await?;
+    println!("HTTP server listening on http://{}:{}", my_domain, port);
+    println!("Serving static files from: {}", static_dir.display());
+    
     axum::serve(listener, app).await?;
     Ok(())
 }

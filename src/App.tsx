@@ -1,7 +1,6 @@
 import "./App.css";
 import { useState, useEffect } from "react";
 import {
-  Wifi,
   MonitorSpeaker,
   ArrowLeft,
   Users,
@@ -15,12 +14,6 @@ import {
 import { useNavigate } from "react-router";
 import { Button } from "@yamada-ui/react";
 import { invoke } from "@tauri-apps/api/core";
-
-type serverInfo = {
-  domain: string;
-  port: number;
-  uuid: string;
-};
 
 type parsedJsonData = {
   attendees: { id: string; attended: boolean }[];
@@ -70,11 +63,7 @@ function App() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [serverRunning, setServerRunning] = useState(false);
   const [localIP, setLocalIP] = useState<string>("");
-  const [serverInfo, setServerInfo] = useState<serverInfo>({
-    domain: "",
-    port: 12345,
-    uuid: "",
-  });
+  const serverPort = 12345;
   const [jsonData, setJsonData] = useState<parsedJsonData>({
     attendees: [],
     today: [],
@@ -88,6 +77,7 @@ function App() {
     },
   });
   const [jsonToUuid, setJsonToUuid] = useState<string>("");
+  const [isRegistering, setIsRegistering] = useState<boolean>(false);
 
   const navigate = useNavigate();
 
@@ -189,6 +179,7 @@ function App() {
   const handleLoadJson = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      setIsRegistering(true);
       const reader = new FileReader();
       reader.onload = async (e) => {
         try {
@@ -254,20 +245,42 @@ function App() {
           console.log("イベント登録結果:", result1);
           console.log("参加者登録結果:", result2);
           console.log("本日参加者登録結果:", result3);
+
+          // イベント登録完了後、自動的にモニターページに遷移
+          const localIp = await invoke("get_local_ip");
+          const domain = encodeURIComponent(`${localIp as string}:12345`);
+
+          // 少し待ってからページ遷移（ユーザーに完了を知らせる）
+          setTimeout(() => {
+            handlePageChange(`/monitor/${result1 as string}/${domain}`);
+          }, 500);
         } catch (error) {
           console.error("無効なJSONファイル:", error);
           alert("無効なJSONファイルです");
+          setIsRegistering(false);
         }
       };
       reader.readAsText(file);
     }
   };
-  const getDomain = async () => {
-    const result = await invoke("get_local_ip");
-    return result as string;
-  };
 
   const renderLoadJsonMenu = () => {
+    if (isRegistering) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4"></div>
+            <h2 className="text-2xl font-bold text-gray-700 mb-2">
+              イベントを登録しています...
+            </h2>
+            <p className="text-gray-500">
+              完了後、自動的にモニターページに移動します
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div
         className={`min-h-screen  p-6 transition-all duration-300 ease-in-out ${
@@ -280,18 +293,6 @@ function App() {
             <p className="text-gray-600">
               JSONファイルを選択して、イベントデータを読み込みます。
             </p>
-            {jsonToUuid && (
-              <Button
-                onClick={async () => {
-                  const result = await invoke("get_local_ip");
-                  handlePageChange(
-                    `/event/${jsonToUuid}/true/${result as string}:12345`
-                  );
-                }}
-              >
-                イベントを表示
-              </Button>
-            )}
           </div>
         </div>
         <div className="bg-gray-50 min-h-screen font-sans">
@@ -612,117 +613,34 @@ function App() {
     </div>
   );
 
-  const renderJoinMenu = () => (
-    <div
-      className={`flex flex-col items-center justify-center h-screen transition-all duration-300 ease-in-out ${
-        isAnimating ? "opacity-0 scale-95" : "opacity-100 scale-100"
-      }`}
-    >
-      <div className="w-full max-w-md space-y-4">
-        <h2 className="text-2xl font-bold text-center mb-8">ルームに参加</h2>
-
-        <div className="grid grid-cols-1 gap-4">
-          <div className="flex items-center p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer">
-            <Wifi className="w-8 h-8 text-blue-500 mr-4" />
-            <div>
-              <h3 className="font-semibold">QRコードでスキャン</h3>
-              <p className="text-sm text-gray-600">QRコードを読み取って参加</p>
-            </div>
-          </div>
-
-          <div className="flex items-center p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer">
-            <Users className="w-8 h-8 text-orange-500 mr-4" />
-            <div>
-              <h3 className="font-semibold">ルームIDで参加</h3>
-              <p className="text-sm text-gray-600">IDを入力して参加する</p>
-            </div>
-          </div>
-
-          <div className="p-4 bg-white rounded-lg shadow-md">
-            <div className="text-lg text-gray-500 mb-2">
-              <input
-                value={serverInfo.uuid}
-                onChange={(e) =>
-                  setServerInfo({ ...serverInfo, uuid: e.target.value })
-                }
-                type="text"
-                placeholder="ルームIDを入力してください"
-                className="w-full px-3 py-2 m-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="text-lg text-gray-500 mb-2">
-              <input
-                value={serverInfo.domain}
-                onChange={(e) =>
-                  setServerInfo({ ...serverInfo, domain: e.target.value })
-                }
-                type="text"
-                placeholder="ipアドレスを入力してください"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="text-lg text-gray-500 mb-2">
-              <input
-                value={serverInfo.port}
-                onChange={(e) =>
-                  setServerInfo({
-                    ...serverInfo,
-                    port: parseInt(e.target.value),
-                  })
-                }
-                type="number"
-                placeholder="ポート番号を入力してください"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div className="text-sm text-gray-500 mt-2">
-              <Button
-                onClick={() => {
-                  if (
-                    !serverInfo.uuid ||
-                    !serverInfo.domain ||
-                    !serverInfo.port
-                  ) {
-                    alert("すべてのフィールドを入力してください");
-                    return;
-                  }
-                  handlePageChange(
-                    `/event/${serverInfo.uuid}/false/${serverInfo.domain}:${serverInfo.port}`
-                  );
-                }}
-                className="m-5 w-full bg-blue-500 text-white hover:bg-blue-600 transition-colors py-2 rounded-md"
-              >
-                参加する
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
   const renderMainMenu = () => (
     <div
       className={`flex flex-col items-center justify-center h-screen gap-4 transition-all duration-300 ease-in-out ${
         isAnimating ? "opacity-0 scale-95" : "opacity-100 scale-100"
       }`}
     >
-      <div className="grid grid-cols-2 gap-4">
+      <div className="flex justify-center gap-4">
         <div
-          className="flex flex-col items-center justify-center p-4 bg-gray-200 rounded-lg shadow-md hover:bg-gray-300 transition-all duration-200 cursor-pointer transform hover:scale-105"
+          className="flex flex-col items-center justify-center p-8 bg-gray-200 rounded-lg shadow-md hover:bg-gray-300 transition-all duration-200 cursor-pointer transform hover:scale-105"
           onClick={() => handleMenuClick("event", "monitor")}
         >
-          <MonitorSpeaker className="w-24 h-24 text-blue-500 m-10" />
-          <span className="mt-2 text-lg font-semibold">イベントを作成する</span>
+          <MonitorSpeaker className="w-32 h-32 text-blue-500 m-10" />
+          <span className="mt-2 text-xl font-semibold">
+            イベントを作成・管理する
+          </span>
         </div>
-        <div
-          className="flex flex-col items-center justify-center p-4 bg-gray-200 rounded-lg shadow-md hover:bg-gray-300 transition-all duration-200 cursor-pointer transform hover:scale-105"
-          onClick={() => handleMenuClick("join", "wifi")}
-        >
-          <Wifi className="w-24 h-24 text-blue-500 m-10" />
-          <span className="mt-2 text-lg font-semibold">ルームに参加する</span>
-        </div>
+
+        {serverRunning && (
+          <div
+            className="flex flex-col items-center justify-center p-8 bg-green-200 rounded-lg shadow-md hover:bg-green-300 transition-all duration-200 cursor-pointer transform hover:scale-105"
+            onClick={() => handlePageChange("/event-list")}
+          >
+            <MonitorSpeaker className="w-32 h-32 text-green-600 m-10" />
+            <span className="mt-2 text-xl font-semibold">
+              登録済みイベント一覧
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -733,11 +651,7 @@ function App() {
       {selectedIcon && currentView !== "main" && (
         <div className="fixed top-4 right-4 z-10">
           <div className="flex items-center space-x-2 bg-white p-2 rounded-lg shadow-md">
-            {selectedIcon === "monitor" ? (
-              <MonitorSpeaker className="w-6 h-6 text-blue-500" />
-            ) : (
-              <Wifi className="w-6 h-6 text-blue-500" />
-            )}
+            <MonitorSpeaker className="w-6 h-6 text-blue-500" />
           </div>
         </div>
       )}
@@ -747,7 +661,7 @@ function App() {
           <div className="flex items-center space-x-2">
             <span className="text-sm font-medium">サーバーが起動中</span>
             <span className="text-xs text-gray-500">
-              {localIP}:{serverInfo.port}
+              {localIP}:{serverPort}
             </span>
           </div>
         </div>
@@ -773,7 +687,6 @@ function App() {
       <div className="relative">
         {currentView === "main" && renderMainMenu()}
         {currentView === "event" && renderEventMenu()}
-        {currentView === "join" && renderJoinMenu()}
         {currentView === "modes" && renderModeSelector()}
         {currentView === "loadJson" && renderLoadJsonMenu()}
       </div>

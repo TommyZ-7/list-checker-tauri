@@ -26,7 +26,7 @@ uuid = { version = "1.17.0", features = ["v4"] }
 socketioxide = "0.17.1"
 tokio = { version = "1.0", features = ["full"] }
 tower = "0.4"
-tower-http = { version = "0.5", features = ["cors"] }
+tower-http = { version = "0.5", features = ["cors", "fs"] }
 axum = "0.8.4"
 chrono = "0.4.41"
 local-ip-address = "0.6"

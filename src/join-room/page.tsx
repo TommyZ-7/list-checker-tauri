@@ -61,7 +61,9 @@ function JoinRoom() {
         }}
         onClick={() => {
           if (uuid && domain && port) {
-            window.location.href = `/event/${uuid}/false/${domain}:${port}`;
+            window.location.href = `/monitor/${uuid}/${encodeURIComponent(
+              `${domain}:${port}`
+            )}`;
           } else {
             alert("Please fill in all fields.");
           }

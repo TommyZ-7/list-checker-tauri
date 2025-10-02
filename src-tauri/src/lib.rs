@@ -137,12 +137,16 @@ pub struct Eventstruct {
     autotodayregister: bool,
     nolist: bool,
     soukai: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    roomid: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    password: Option<String>,
 }
     
 #[tauri::command]
 fn register_event(data: String) -> String {
 
-    let parsed_data: Eventstruct = match serde_json::from_str(&data) {
+    let mut parsed_data: Eventstruct = match serde_json::from_str(&data) {
         Ok(event) => event,
         Err(e) => {
             eprintln!("Failed to parse event data: {}", e);
@@ -154,6 +158,10 @@ fn register_event(data: String) -> String {
     let uuid = Uuid::new_v4().to_string();
     let uuid = uuid.split('-').next().unwrap_or(&uuid).to_string();
     let event_key = format!("{}:datas", uuid);
+
+    // roomidを設定
+    parsed_data.roomid = Some(uuid.clone());
+    parsed_data.password = Some(String::new()); // 空のパスワード
 
     let app_state = get_app_state();
 
@@ -220,6 +228,26 @@ fn get_event(uuid: String, ) -> Option<Eventstruct> {
 
 
     app_state.get(&format!("{}:datas", uuid))
+}
+
+#[tauri::command]
+fn get_all_events() -> Vec<Eventstruct> {
+    let app_state = get_app_state();
+    let store = app_state.store.lock().unwrap();
+    
+    let mut events = Vec::new();
+    for (key, value) in store.iter() {
+        if key.ends_with(":datas") {
+            let mut event = value.clone();
+            // キーからUUIDを抽出してroomidに設定
+            if let Some(uuid) = key.strip_suffix(":datas") {
+                event.roomid = Some(uuid.to_string());
+            }
+            events.push(event);
+        }
+    }
+    
+    events
 }
 
 #[tauri::command]
@@ -311,7 +339,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
-            register_event, debug_hashmap, get_event, debug_run_server, register_attendees, get_local_ip , json_to_attendees, json_to_today, server_check
+            register_event, debug_hashmap, get_event, get_all_events, debug_run_server, register_attendees, get_local_ip , json_to_attendees, json_to_today, server_check
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

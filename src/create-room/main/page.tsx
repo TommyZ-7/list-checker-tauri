@@ -489,10 +489,12 @@ const EventRegistration = () => {
 
                       {dataSended ? (
                         <Link
-                          to={`/event/${uuid}/true/${domain}:12345`}
+                          to={`/monitor/${uuid}/${encodeURIComponent(
+                            `${domain}:12345`
+                          )}`}
                           className="text-blue-500 hover:underline mt-4 inline-block"
                         >
-                          イベントページへ
+                          モニターページへ
                         </Link>
                       ) : null}
                     </>
@@ -529,12 +531,14 @@ const EventRegistration = () => {
                           <Button
                             onClick={() =>
                               handlePageChange(
-                                `/event/${uuid}/true/${domain}:12345`
+                                `/monitor/${uuid}/${encodeURIComponent(
+                                  `${domain}:12345`
+                                )}`
                               )
                             }
                             className="mt-4"
                           >
-                            イベントページへ
+                            モニターページへ
                           </Button>
                         </div>
                       </div>
