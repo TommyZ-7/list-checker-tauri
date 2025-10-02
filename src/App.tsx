@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   Users,
   Calendar,
-  Share2,
   FileJson,
   ListCheck,
   ListPlus,
@@ -76,7 +75,6 @@ function App() {
       nolist: false,
     },
   });
-  const [jsonToUuid, setJsonToUuid] = useState<string>("");
   const [isRegistering, setIsRegistering] = useState<boolean>(false);
 
   const navigate = useNavigate();
@@ -225,7 +223,6 @@ function App() {
           }));
           const result1 = await invoke("register_event", { data: sendData });
           console.log("登録イベントのUUID:", result1 as string);
-          setJsonToUuid(result1 as string);
           const result2 = await invoke("json_to_attendees", {
             data: {
               attendeeindex: sendAttendees,
@@ -597,17 +594,6 @@ function App() {
               </div>
             </div>
           </button>
-          {serverRunning && (
-            <div className="flex items-center p-4 bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer">
-              <Share2 className="w-8 h-8 text-purple-500 mr-4" />
-              <div>
-                <h3 className="font-semibold">登録済みルームを開く</h3>
-                <p className="text-sm text-gray-600">
-                  既に起動しているルームを開きます。
-                </p>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
