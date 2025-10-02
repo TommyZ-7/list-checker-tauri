@@ -209,6 +209,11 @@ function MonitorPageNew() {
     window.open(url, "_blank");
   };
 
+  const openMonitorPage = () => {
+    const url = `http://${localIP}:50080/monitor.html?uuid=${uuid}&server=${domain}`;
+    window.open(url, "_blank");
+  };
+
   const downloadData = (format: "excel" | "csv" | "json") => {
     if (expectedAttendees.length === 0 && onTheDay.length === 0) {
       alert("データがありません。");
@@ -383,6 +388,15 @@ function MonitorPageNew() {
               >
                 <Download className="w-5 h-5" />
                 ダウンロード
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={openMonitorPage}
+                className="px-4 py-2 bg-emerald-100 hover:bg-emerald-200 rounded-xl transition-colors flex items-center gap-2"
+              >
+                <ExternalLink className="w-5 h-5" />
+                モニターページ
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -875,6 +889,16 @@ function MonitorPageNew() {
                   <div className="text-sm text-gray-500 mb-3">出席登録URL</div>
                   <div className="text-xs font-mono bg-white p-3 rounded-lg border border-gray-200 break-all">
                     http://{localIP}:50080/attendance.html?uuid={uuid}&server=
+                    {domain}
+                  </div>
+                </div>
+
+                <div className="p-4 bg-gray-50 rounded-xl">
+                  <div className="text-sm text-gray-500 mb-3">
+                    モニターページURL
+                  </div>
+                  <div className="text-xs font-mono bg-white p-3 rounded-lg border border-gray-200 break-all">
+                    http://{localIP}:50080/monitor.html?uuid={uuid}&server=
                     {domain}
                   </div>
                 </div>
