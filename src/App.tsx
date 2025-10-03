@@ -69,7 +69,9 @@ function App() {
   const [showCommitLog, setShowCommitLog] = useState(false);
   const [commitLogs, setCommitLogs] = useState<any[]>([]);
   const [loadingCommits, setLoadingCommits] = useState(false);
-  const [expandedCommits, setExpandedCommits] = useState<Set<string>>(new Set());
+  const [expandedCommits, setExpandedCommits] = useState<Set<string>>(
+    new Set()
+  );
   const [jsonData, setJsonData] = useState<parsedJsonData>({
     attendees: [],
     today: [],
@@ -186,19 +188,19 @@ function App() {
     setLoadingCommits(true);
     try {
       const response = await fetch(
-        'https://api.github.com/repos/TommyZ-7/list-checker-tauri/commits?per_page=10'
+        "https://api.github.com/repos/TommyZ-7/list-checker-tauri/commits?per_page=10"
       );
       if (response.ok) {
         const data = await response.json();
         setCommitLogs(data);
         setShowCommitLog(true);
       } else {
-        console.error('Failed to fetch commits');
-        alert('コミットログの取得に失敗しました');
+        console.error("Failed to fetch commits");
+        alert("コミットログの取得に失敗しました");
       }
     } catch (error) {
-      console.error('Error fetching commits:', error);
-      alert('コミットログの取得中にエラーが発生しました');
+      console.error("Error fetching commits:", error);
+      alert("コミットログの取得中にエラーが発生しました");
     } finally {
       setLoadingCommits(false);
     }
@@ -206,7 +208,7 @@ function App() {
 
   // コミットの展開/折りたたみをトグル
   const toggleCommitExpand = (sha: string) => {
-    setExpandedCommits(prev => {
+    setExpandedCommits((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(sha)) {
         newSet.delete(sha);
@@ -649,7 +651,11 @@ function App() {
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="flex gap-4 max-w-7xl w-full h-[90vh]">
           {/* メイン情報パネル */}
-          <div className={`bg-white rounded-xl shadow-2xl overflow-hidden transition-all duration-300 ${showCommitLog ? 'w-1/2' : 'w-full max-w-2xl mx-auto'}`}>
+          <div
+            className={`bg-white rounded-xl shadow-2xl overflow-hidden transition-all duration-300 ${
+              showCommitLog ? "w-1/2" : "w-full max-w-2xl mx-auto"
+            }`}
+          >
             {/* ヘッダー */}
             <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6">
               <div className="flex justify-between items-start">
@@ -670,7 +676,10 @@ function App() {
             </div>
 
             {/* コンテンツ */}
-            <div className="p-6 space-y-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 180px)' }}>
+            <div
+              className="p-6 space-y-6 overflow-y-auto"
+              style={{ maxHeight: "calc(90vh - 180px)" }}
+            >
               {/* バージョン情報 */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
@@ -727,7 +736,7 @@ function App() {
                       </svg>
                     </a>
                   </div>
-                  
+
                   {/* コミットログボタン */}
                   <button
                     onClick={fetchCommitLogs}
@@ -741,8 +750,18 @@ function App() {
                       </>
                     ) : (
                       <>
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                          />
                         </svg>
                         <span>コミットログを表示</span>
                       </>
@@ -804,7 +823,10 @@ function App() {
               </div>
 
               {/* コミットリスト */}
-              <div className="p-4 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 120px)' }}>
+              <div
+                className="p-4 overflow-y-auto"
+                style={{ maxHeight: "calc(90vh - 120px)" }}
+              >
                 {commitLogs.length === 0 ? (
                   <div className="text-center py-12 text-gray-500">
                     <p>コミットログがありません</p>
@@ -814,16 +836,20 @@ function App() {
                     {commitLogs.map((commit) => {
                       const isExpanded = expandedCommits.has(commit.sha);
                       const fullMessage = commit.commit.message;
-                      const firstLine = fullMessage.split('\n')[0];
-                      const hasMoreLines = fullMessage.split('\n').length > 1;
-                      const remainingLines = fullMessage.split('\n').slice(1).join('\n').trim();
+                      const firstLine = fullMessage.split("\n")[0];
+                      const hasMoreLines = fullMessage.split("\n").length > 1;
+                      const remainingLines = fullMessage
+                        .split("\n")
+                        .slice(1)
+                        .join("\n")
+                        .trim();
 
                       return (
                         <div
                           key={commit.sha}
                           className="bg-gradient-to-br from-gray-50 to-white rounded-lg border border-gray-200 hover:shadow-md transition-all duration-200 overflow-hidden"
                         >
-                          <div 
+                          <div
                             className="p-4 cursor-pointer"
                             onClick={() => toggleCommitExpand(commit.sha)}
                           >
@@ -841,23 +867,30 @@ function App() {
                                       toggleCommitExpand(commit.sha);
                                     }}
                                   >
-                                    <svg 
-                                      className={`w-5 h-5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                                      fill="none" 
-                                      stroke="currentColor" 
+                                    <svg
+                                      className={`w-5 h-5 transition-transform duration-200 ${
+                                        isExpanded ? "rotate-180" : ""
+                                      }`}
+                                      fill="none"
+                                      stroke="currentColor"
                                       viewBox="0 0 24 24"
                                     >
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M19 9l-7 7-7-7"
+                                      />
                                     </svg>
                                   </button>
                                 )}
                               </div>
-                              
+
                               {/* 展開可能な詳細メッセージ */}
                               {hasMoreLines && (
-                                <div 
+                                <div
                                   className={`overflow-hidden transition-all duration-300 ${
-                                    isExpanded ? 'max-h-96 mt-2' : 'max-h-0'
+                                    isExpanded ? "max-h-96 mt-2" : "max-h-0"
                                   }`}
                                 >
                                   <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-200 whitespace-pre-wrap">
@@ -883,12 +916,14 @@ function App() {
                               </div>
                               <div className="flex items-center gap-3">
                                 <span>
-                                  {new Date(commit.commit.author.date).toLocaleDateString('ja-JP', {
-                                    year: 'numeric',
-                                    month: 'short',
-                                    day: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
+                                  {new Date(
+                                    commit.commit.author.date
+                                  ).toLocaleDateString("ja-JP", {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
                                   })}
                                 </span>
                                 <a
