@@ -67,11 +67,12 @@ async fn join_data(socket: SocketRef, Data(data): Data<String>) {
 
     println!("Returning data: {:?}", return_data);
 
+    // UUIDをroomとして使用してソケットを参加させる
+    let room_name = data.clone();
+    socket.join(room_name.clone());
+    println!("Socket {} joined room: {}", socket.id, room_name);
+
     // 初期データをクライアントに送信
-
-    
-
-
     if let Err(e) = socket.emit("join_return", &return_data) {
         eprintln!("Failed to send initial data: {}", e);
     }
@@ -152,9 +153,10 @@ async fn register_attendees(socket: SocketRef, Data(data): Data<AttendeeData>) {
 
     app_state.insert(key.clone(), sorted_attendees.clone());
 
-    // 参加者の情報をクライアントに送信
-    if let Err(e) = socket.broadcast().emit("register_attendees_return", &sorted_attendees).await {
-        eprintln!("Failed to send attendees data: {}", e);
+    // 参加者の情報を同じroomのクライアントにのみブロードキャスト
+    let room_name = data.uuid.clone();
+    if let Err(e) = socket.within(room_name.clone()).emit("register_attendees_return", &sorted_attendees).await {
+        eprintln!("Failed to send attendees data to room {}: {}", room_name, e);
     }
 }
 
@@ -189,9 +191,10 @@ async fn register_ontheday(socket: SocketRef, Data(data): Data<OnTheDayData>) {
 
     app_state.insert(key.clone(), merged_ontheday.clone());
 
-    // 参加者の情報をクライアントに送信
-    if let Err(e) = socket.broadcast().emit("register_ontheday_return", &merged_ontheday).await {
-        eprintln!("Failed to send ontheday data: {}", e);
+    // 参加者の情報を同じroomのクライアントにのみブロードキャスト
+    let room_name = data.uuid.clone();
+    if let Err(e) = socket.within(room_name.clone()).emit("register_ontheday_return", &merged_ontheday).await {
+        eprintln!("Failed to send ontheday data to room {}: {}", room_name, e);
     }
 }
 
@@ -223,14 +226,10 @@ async fn update_settings(socket: SocketRef, Data(data): Data<UpdateSettingsData>
     // 設定をストレージに保存
     app_state.insert(key.clone(), data.settings.clone());
 
-    // 設定変更を他の全クライアントにブロードキャスト
-    if let Err(e) = socket.broadcast().emit("update_settings_return", &data.settings).await {
-        eprintln!("Failed to broadcast settings update: {}", e);
-    }
-    
-    // 送信元クライアントにも確認を返す
-    if let Err(e) = socket.emit("update_settings_return", &data.settings) {
-        eprintln!("Failed to send settings update confirmation: {}", e);
+    // 設定変更を同じroomの他のクライアントにブロードキャスト
+    let room_name = data.uuid.clone();
+    if let Err(e) = socket.within(room_name.clone()).emit("update_settings_return", &data.settings).await {
+        eprintln!("Failed to broadcast settings update to room {}: {}", room_name, e);
     }
 }
 
@@ -251,8 +250,10 @@ async fn settings_change(socket: SocketRef, Data(data): Data<SettingsData>) {
 
     app_state.insert(key.clone(), return_data.clone());
 
-    if let Err(e) = socket.broadcast().emit("settings_change_return", &return_data).await {
-        eprintln!("Failed to send settings change data: {}", e);
+    // 設定変更を同じroomのクライアントにのみブロードキャスト
+    let room_name = data.uuid.clone();
+    if let Err(e) = socket.within(room_name.clone()).emit("settings_change_return", &return_data).await {
+        eprintln!("Failed to send settings change data to room {}: {}", room_name, e);
     }
 }
 

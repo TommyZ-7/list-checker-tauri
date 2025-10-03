@@ -66,6 +66,10 @@ function App() {
   const [localIP, setLocalIP] = useState<string>("");
   const serverPort = 50345;
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [showCommitLog, setShowCommitLog] = useState(false);
+  const [commitLogs, setCommitLogs] = useState<any[]>([]);
+  const [loadingCommits, setLoadingCommits] = useState(false);
+  const [expandedCommits, setExpandedCommits] = useState<Set<string>>(new Set());
   const [jsonData, setJsonData] = useState<parsedJsonData>({
     attendees: [],
     today: [],
@@ -175,6 +179,42 @@ function App() {
     setTimeout(() => {
       navigate(page);
     }, 300);
+  };
+
+  // GitHubコミットログを取得
+  const fetchCommitLogs = async () => {
+    setLoadingCommits(true);
+    try {
+      const response = await fetch(
+        'https://api.github.com/repos/TommyZ-7/list-checker-tauri/commits?per_page=10'
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setCommitLogs(data);
+        setShowCommitLog(true);
+      } else {
+        console.error('Failed to fetch commits');
+        alert('コミットログの取得に失敗しました');
+      }
+    } catch (error) {
+      console.error('Error fetching commits:', error);
+      alert('コミットログの取得中にエラーが発生しました');
+    } finally {
+      setLoadingCommits(false);
+    }
+  };
+
+  // コミットの展開/折りたたみをトグル
+  const toggleCommitExpand = (sha: string) => {
+    setExpandedCommits(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(sha)) {
+        newSet.delete(sha);
+      } else {
+        newSet.add(sha);
+      }
+      return newSet;
+    });
   };
 
   const handleLoadJson = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -606,116 +646,271 @@ function App() {
     if (!showInfoModal) return null;
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 overflow-hidden">
-          {/* ヘッダー */}
-          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6">
-            <div className="flex justify-between items-start">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="flex gap-4 max-w-7xl w-full h-[90vh]">
+          {/* メイン情報パネル */}
+          <div className={`bg-white rounded-xl shadow-2xl overflow-hidden transition-all duration-300 ${showCommitLog ? 'w-1/2' : 'w-full max-w-2xl mx-auto'}`}>
+            {/* ヘッダー */}
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-2xl font-bold mb-2">出席管理システム</h2>
+                  <p className="text-blue-100">List Checker Tauri</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowInfoModal(false);
+                    setShowCommitLog(false);
+                  }}
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* コンテンツ */}
+            <div className="p-6 space-y-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 180px)' }}>
+              {/* バージョン情報 */}
               <div>
-                <h2 className="text-2xl font-bold mb-2">出席管理システム</h2>
-                <p className="text-blue-100">List Checker Tauri</p>
-              </div>
-              <button
-                onClick={() => setShowInfoModal(false)}
-                className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-          </div>
-
-          {/* コンテンツ */}
-          <div className="p-6 space-y-6">
-            {/* バージョン情報 */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
-                <div className="w-1 h-5 bg-blue-500 mr-3 rounded"></div>
-                バージョン情報
-              </h3>
-              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">アプリケーション</span>
-                  <span className="font-mono font-semibold text-gray-800">
-                    v1.1.1
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">ビルド日</span>
-                  <span className="text-sm text-gray-800">2025年10月3日</span>
-                </div>
-              </div>
-            </div>
-
-            {/* GitHubリポジトリ情報 */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
-                <div className="w-1 h-5 bg-purple-500 mr-3 rounded"></div>
-                GitHubリポジトリ
-              </h3>
-              <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-4 border border-gray-200">
-                {/* リポジトリ説明 */}
-                <div className="mb-4">
-                  <p className="text-sm text-gray-600 mb-2">
-                    List Checker Tauri
-                  </p>
-                  <a
-                    href="https://github.com/TommyZ-7/list-checker-tauri"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center"
-                  >
-                    <span className="font-mono">
-                      TommyZ-7/list-checker-tauri
+                <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                  <div className="w-1 h-5 bg-blue-500 mr-3 rounded"></div>
+                  バージョン情報
+                </h3>
+                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">アプリケーション</span>
+                    <span className="font-mono font-semibold text-gray-800">
+                      v1.1.2
                     </span>
-                    <svg
-                      className="w-4 h-4 ml-1"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">ビルド日</span>
+                    <span className="text-sm text-gray-800">2025年10月4日</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* GitHubリポジトリ情報 */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                  <div className="w-1 h-5 bg-purple-500 mr-3 rounded"></div>
+                  GitHubリポジトリ
+                </h3>
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-4 border border-gray-200">
+                  {/* リポジトリ説明 */}
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-600 mb-2">
+                      List Checker Tauri
+                    </p>
+                    <a
+                      href="https://github.com/TommyZ-7/list-checker-tauri"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                      />
-                    </svg>
-                  </a>
+                      <span className="font-mono">
+                        TommyZ-7/list-checker-tauri
+                      </span>
+                      <svg
+                        className="w-4 h-4 ml-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                        />
+                      </svg>
+                    </a>
+                  </div>
+                  
+                  {/* コミットログボタン */}
+                  <button
+                    onClick={fetchCommitLogs}
+                    disabled={loadingCommits}
+                    className="w-full mt-3 px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg hover:from-purple-600 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {loadingCommits ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>読み込み中...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span>コミットログを表示</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* ライセンス情報 */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                  <div className="w-1 h-5 bg-yellow-500 mr-3 rounded"></div>
+                  システム情報
+                </h3>
+                <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">HTTPポート</span>
+                    <span className="font-mono text-gray-800">50080</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Socket.IOポート</span>
+                    <span className="font-mono text-gray-800">50345</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">識別子</span>
+                    <span className="font-mono text-xs text-gray-800">
+                      com.list-checker-tauri.app
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* ライセンス情報 */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
-                <div className="w-1 h-5 bg-yellow-500 mr-3 rounded"></div>
-                システム情報
-              </h3>
-              <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">HTTPポート</span>
-                  <span className="font-mono text-gray-800">50080</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Socket.IOポート</span>
-                  <span className="font-mono text-gray-800">50345</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">識別子</span>
-                  <span className="font-mono text-xs text-gray-800">
-                    com.list-checker-tauri.app
-                  </span>
-                </div>
-              </div>
+            {/* フッター */}
+            <div className="bg-gray-50 px-6 py-4 border-t">
+              <p className="text-center text-sm text-gray-600">
+                © 2025 出席管理システム. All rights reserved.
+              </p>
             </div>
           </div>
 
-          {/* フッター */}
-          <div className="bg-gray-50 px-6 py-4 border-t">
-            <p className="text-center text-sm text-gray-600">
-              © 2025 出席管理システム. All rights reserved.
-            </p>
-          </div>
+          {/* コミットログパネル */}
+          {showCommitLog && (
+            <div className="w-1/2 bg-white rounded-xl shadow-2xl overflow-hidden animate-fadeIn">
+              {/* ヘッダー */}
+              <div className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white p-6">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h2 className="text-2xl font-bold mb-2">コミットログ</h2>
+                    <p className="text-purple-100">最新10件</p>
+                  </div>
+                  <button
+                    onClick={() => setShowCommitLog(false)}
+                    className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-2 transition-colors"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+
+              {/* コミットリスト */}
+              <div className="p-4 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 120px)' }}>
+                {commitLogs.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <p>コミットログがありません</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {commitLogs.map((commit) => {
+                      const isExpanded = expandedCommits.has(commit.sha);
+                      const fullMessage = commit.commit.message;
+                      const firstLine = fullMessage.split('\n')[0];
+                      const hasMoreLines = fullMessage.split('\n').length > 1;
+                      const remainingLines = fullMessage.split('\n').slice(1).join('\n').trim();
+
+                      return (
+                        <div
+                          key={commit.sha}
+                          className="bg-gradient-to-br from-gray-50 to-white rounded-lg border border-gray-200 hover:shadow-md transition-all duration-200 overflow-hidden"
+                        >
+                          <div 
+                            className="p-4 cursor-pointer"
+                            onClick={() => toggleCommitExpand(commit.sha)}
+                          >
+                            {/* コミットメッセージ */}
+                            <div className="mb-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <h4 className="font-semibold text-gray-800 flex-1">
+                                  {firstLine}
+                                </h4>
+                                {hasMoreLines && (
+                                  <button
+                                    className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleCommitExpand(commit.sha);
+                                    }}
+                                  >
+                                    <svg 
+                                      className={`w-5 h-5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                                      fill="none" 
+                                      stroke="currentColor" 
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
+                              
+                              {/* 展開可能な詳細メッセージ */}
+                              {hasMoreLines && (
+                                <div 
+                                  className={`overflow-hidden transition-all duration-300 ${
+                                    isExpanded ? 'max-h-96 mt-2' : 'max-h-0'
+                                  }`}
+                                >
+                                  <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-200 whitespace-pre-wrap">
+                                    {remainingLines}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* メタ情報 */}
+                            <div className="flex items-center justify-between text-xs text-gray-500">
+                              <div className="flex items-center gap-2">
+                                {commit.author?.avatar_url && (
+                                  <img
+                                    src={commit.author.avatar_url}
+                                    alt={commit.commit.author.name}
+                                    className="w-6 h-6 rounded-full"
+                                  />
+                                )}
+                                <span className="font-medium">
+                                  {commit.commit.author.name}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span>
+                                  {new Date(commit.commit.author.date).toLocaleDateString('ja-JP', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                                <a
+                                  href={commit.html_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-800 hover:underline font-mono"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {commit.sha.substring(0, 7)}
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );

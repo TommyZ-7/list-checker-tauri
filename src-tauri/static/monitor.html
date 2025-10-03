@@ -962,6 +962,7 @@
 
         socket.on("connect", () => {
           console.log("Connected to server");
+          // UUIDを送信してroomに参加
           socket.emit("join", uuid);
         });
 

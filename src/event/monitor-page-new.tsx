@@ -111,6 +111,15 @@ function MonitorPageNew() {
           socketRef.current = io("http://" + domain);
           console.log("Connecting to socket server at:http://" + domain);
 
+          // 接続時にroomに参加
+          socketRef.current.on("connect", () => {
+            console.log(
+              "Connected to socket server, joining room with UUID:",
+              uuid
+            );
+            socketRef.current.emit("join", uuid);
+          });
+
           socketRef.current.on("register_attendees_return", (data: any) => {
             console.log("Attendance data received from server:", data);
             if (data) {
