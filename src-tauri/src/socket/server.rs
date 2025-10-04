@@ -9,6 +9,29 @@ use crate::get_app_state4;
 use local_ip_address::local_ip;
 use serde::{ Deserialize, Serialize};
 use crate::IS_SERVER_RUNNING;
+use chrono::Local;
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+struct LogEntry {
+    timestamp: String,
+    level: String,
+    message: String,
+}
+
+fn create_log_entry(level: &str, message: String) -> LogEntry {
+    LogEntry {
+        timestamp: Local::now().format("%H:%M:%S").to_string(),
+        level: level.to_string(),
+        message,
+    }
+}
+
+async fn broadcast_log(socket: &SocketRef, room: &str, level: &str, message: String) {
+    let log_entry = create_log_entry(level, message);
+    if let Err(e) = socket.within(room.to_string()).emit("activity_log", &log_entry).await {
+        eprintln!("Failed to broadcast log: {}", e);
+    }
+}
 
 
 
@@ -72,6 +95,13 @@ async fn join_data(socket: SocketRef, Data(data): Data<String>) {
     socket.join(room_name.clone());
     println!("Socket {} joined room: {}", socket.id, room_name);
 
+    // クライアント接続のログをブロードキャスト
+    let socket_clone = socket.clone();
+    let room_clone = room_name.clone();
+    tokio::spawn(async move {
+        broadcast_log(&socket_clone, &room_clone, "server", format!("クライアントが接続しました (ID: {})", &socket_clone.id.to_string()[..8])).await;
+    });
+
     // 初期データをクライアントに送信
     if let Err(e) = socket.emit("join_return", &return_data) {
         eprintln!("Failed to send initial data: {}", e);
@@ -127,13 +157,18 @@ async fn register_attendees(socket: SocketRef, Data(data): Data<AttendeeData>) {
     let app_state = get_app_state2();
     let key = data.uuid.clone() + ":attendees";
 
-    
+    // 既存の出席者リストを取得
+    let existing_attendees = app_state.get(&key).unwrap_or_default();
 
-    
-    let result = app_state.get(&key);
+    // 新規登録者のみを抽出
+    let new_registrations: Vec<i32> = data.attendeeindex
+        .iter()
+        .filter(|&index| !existing_attendees.contains(index))
+        .copied()
+        .collect();
 
     // result と data.attendeeindex をかぶりなしでマージ
-    let merged_attendees: Vec<i32> = match result {
+    let merged_attendees: Vec<i32> = match app_state.get(&key) {
         Some(existing) => {
             let mut combined = existing.clone();
             for &item in &data.attendeeindex {
@@ -152,6 +187,28 @@ async fn register_attendees(socket: SocketRef, Data(data): Data<AttendeeData>) {
     println!("Merged attendees data: {:?}", sorted_attendees);
 
     app_state.insert(key.clone(), sorted_attendees.clone());
+
+    // 新規登録された出席者のログを出力(インデックスから学籍番号を取得)
+    if !new_registrations.is_empty() {
+        let socket_clone = socket.clone();
+        let uuid_clone = data.uuid.clone();
+        tokio::spawn(async move {
+            // 参加者リストを取得
+            let app_state_participants = get_app_state();
+            let participants_key = uuid_clone.clone() + ":datas";
+            
+            if let Some(event_data) = app_state_participants.get(&participants_key) {
+                let participants = &event_data.participants;
+                for &index in &new_registrations {
+                    if let Some(student_id) = participants.get(index as usize) {
+                        broadcast_log(&socket_clone, &uuid_clone, "info", format!("出席登録: {} が出席しました", student_id)).await;
+                    } else {
+                        broadcast_log(&socket_clone, &uuid_clone, "warning", format!("出席登録: インデックス {} (参加者情報が見つかりません)", index)).await;
+                    }
+                }
+            }
+        });
+    }
 
     // 参加者の情報を同じroomのクライアントにのみブロードキャスト
     let room_name = data.uuid.clone();
@@ -172,10 +229,18 @@ async fn register_ontheday(socket: SocketRef, Data(data): Data<OnTheDayData>) {
     let app_state = get_app_state3();
     let key = data.uuid.clone() + ":ontheday";
 
-    let result = app_state.get(&key);
+    // 既存の当日参加者リストを取得
+    let existing_ontheday = app_state.get(&key).unwrap_or_default();
+
+    // 新規登録者のみを抽出
+    let new_participants: Vec<String> = data.ontheday
+        .iter()
+        .filter(|id| !existing_ontheday.contains(id))
+        .cloned()
+        .collect();
 
     // result と data.ontheday をかぶりなしでマージ
-    let merged_ontheday: Vec<String> = match result {
+    let merged_ontheday: Vec<String> = match app_state.get(&key) {
         Some(existing) => {
             let mut combined = existing.clone();
             for item in &data.ontheday {
@@ -190,6 +255,17 @@ async fn register_ontheday(socket: SocketRef, Data(data): Data<OnTheDayData>) {
 
 
     app_state.insert(key.clone(), merged_ontheday.clone());
+
+    // 新規登録された当日参加者のみログを出力
+    if !new_participants.is_empty() {
+        let socket_clone = socket.clone();
+        let uuid_clone = data.uuid.clone();
+        tokio::spawn(async move {
+            for student_id in &new_participants {
+                broadcast_log(&socket_clone, &uuid_clone, "info", format!("当日参加登録: {} が参加しました", student_id)).await;
+            }
+        });
+    }
 
     // 参加者の情報を同じroomのクライアントにのみブロードキャスト
     let room_name = data.uuid.clone();
