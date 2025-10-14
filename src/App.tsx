@@ -94,7 +94,7 @@ function App() {
   const modes = [
     {
       id: "check",
-      title: "リストチェックモード",
+      title: "リストチェックモード1",
       description:
         "リストのチェックのみを行います。リストに登録されていない参加者は登録できません",
       icon: ListCheck,
@@ -108,7 +108,7 @@ function App() {
     },
     {
       id: "all",
-      title: "受付モード",
+      title: "リストチェックモード2",
       description: "リストのチェック、およびリスト外の参加者を受け付けます。",
       icon: ListTodo,
       features: ["お笑いライブ", "トークショー", "..."],
@@ -690,12 +690,14 @@ function App() {
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">アプリケーション</span>
                     <span className="font-mono font-semibold text-gray-800">
-                      v1.2.0
+                      v1.2.1
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">ビルド日</span>
-                    <span className="text-sm text-gray-800">2025年10月4日</span>
+                    <span className="text-sm text-gray-800">
+                      2025年10月15日
+                    </span>
                   </div>
                 </div>
               </div>
