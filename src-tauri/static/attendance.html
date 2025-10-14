@@ -736,12 +736,18 @@
             id,
             attended: false,
           }));
+          // 設定を同期（初回接続時にサーバーから受信した設定を反映）
           settings = {
-            arrowtoday: data.arrowtoday || false,
-            autotodayregister: data.autotodayregister || false,
-            soukai: data.soukai || false,
-            nolist: data.nolist || false,
+            arrowtoday: data.arrowtoday !== undefined ? data.arrowtoday : false,
+            autotodayregister:
+              data.autotodayregister !== undefined
+                ? data.autotodayregister
+                : false,
+            soukai: data.soukai !== undefined ? data.soukai : false,
+            nolist: data.nolist !== undefined ? data.nolist : false,
           };
+
+          console.log("Settings synchronized:", settings);
 
           document.getElementById("eventName").textContent =
             data.eventname || "出席登録システム";

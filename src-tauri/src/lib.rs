@@ -126,8 +126,10 @@ pub fn get_app_state4() -> Arc<AppState4> {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
-    arrowtoday: bool,
-    autotodayregister: bool,
+    pub arrowtoday: bool,
+    pub autotodayregister: bool,
+    pub soukai: bool,
+    pub nolist: bool,
 }
 
 // Participant構造体（オブジェクト形式用）

@@ -95,6 +95,22 @@ async fn join_data(socket: SocketRef, Data(data): Data<String>) {
     socket.join(room_name.clone());
     println!("Socket {} joined room: {}", socket.id, room_name);
 
+    // 保存された設定があれば取得し、イベントデータに反映
+    let app_state_settings = get_app_state4();
+    let settings_key = data.clone() + ":settings";
+    
+    let mut final_data = return_data.clone();
+    if let Some(saved_settings) = app_state_settings.get(&settings_key) {
+        println!("Found saved settings for {}: {:?}", data, saved_settings);
+        // 保存された設定で上書き
+        final_data.arrowtoday = saved_settings.arrowtoday;
+        final_data.autotodayregister = saved_settings.autotodayregister;
+        final_data.soukai = saved_settings.soukai;
+        final_data.nolist = saved_settings.nolist;
+    } else {
+        println!("No saved settings found for {}, using default settings from event data", data);
+    }
+
     // クライアント接続のログをブロードキャスト
     let socket_clone = socket.clone();
     let room_clone = room_name.clone();
@@ -102,8 +118,8 @@ async fn join_data(socket: SocketRef, Data(data): Data<String>) {
         broadcast_log(&socket_clone, &room_clone, "server", format!("クライアントが接続しました (ID: {})", &socket_clone.id.to_string()[..8])).await;
     });
 
-    // 初期データをクライアントに送信
-    if let Err(e) = socket.emit("join_return", &return_data) {
+    // 最新の設定を反映したデータをクライアントに送信
+    if let Err(e) = socket.emit("join_return", &final_data) {
         eprintln!("Failed to send initial data: {}", e);
     }
 }
@@ -278,6 +294,8 @@ async fn register_ontheday(socket: SocketRef, Data(data): Data<OnTheDayData>) {
 struct SettingsData {
     arrowtoday: bool,
     autotodayregister: bool,
+    soukai: bool,
+    nolist: bool,
     uuid: String,
 }
 
@@ -316,12 +334,11 @@ async fn settings_change(socket: SocketRef, Data(data): Data<SettingsData>) {
     let app_state = get_app_state4();
     let key = data.uuid.clone() + ":settings";
 
-    let arrow = data.arrowtoday;
-    let auto = data.autotodayregister;
-
     let return_data = crate::Settings {
-        arrowtoday: arrow,
-        autotodayregister: auto,
+        arrowtoday: data.arrowtoday,
+        autotodayregister: data.autotodayregister,
+        soukai: data.soukai,
+        nolist: data.nolist,
     };
 
     app_state.insert(key.clone(), return_data.clone());
