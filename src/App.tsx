@@ -661,7 +661,7 @@ function App() {
               <div className="flex justify-between items-start">
                 <div>
                   <h2 className="text-2xl font-bold mb-2">出席管理システム</h2>
-                  <p className="text-blue-100">List Checker Tauri</p>
+                  <p className="text-blue-100">List Checker 2</p>
                 </div>
                 <button
                   onClick={() => {
