@@ -399,12 +399,50 @@ fn server_check() -> bool {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    use tauri::Manager;
+    
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
             register_event, debug_hashmap, get_event, get_all_events, debug_run_server, register_attendees, get_local_ip , json_to_attendees, json_to_today, server_check
         ])
+        .setup(|app| {
+            #[cfg(desktop)]
+            {
+                let handle = app.handle().clone();
+                
+                if let Some(window) = app.get_webview_window("main") {
+                    window.on_window_event(move |event| {
+                        if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                            let handle_clone = handle.clone();
+                            
+                            // デフォルトの閉じる動作を防ぐ
+                            api.prevent_close();
+                            
+                            // 確認ダイアログを表示
+                            tauri::async_runtime::spawn(async move {
+                                use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
+                                
+                                let answer = handle_clone.dialog()
+                                    .message("アプリケーションを終了しますか？")
+                                    .title("終了確認")
+                                    .kind(MessageDialogKind::Warning)
+                                    .blocking_show();
+                                
+                                if answer {
+                                    // ユーザーが「終了」を選択
+                                    handle_clone.exit(0);
+                                }
+                            });
+                        }
+                    });
+                }
+            }
+            
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
