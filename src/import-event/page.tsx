@@ -37,7 +37,8 @@ const ImportEvent = () => {
   const [domain, setDomain] = useState("");
   const [uuid, setUuid] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
-  const [restoreAttendance, setRestoreAttendance] = useState(false);
+  const [restoreTodayList, setRestoreTodayList] = useState(false);
+  const [restoreAttendedStatus, setRestoreAttendedStatus] = useState(false);
 
   // ドメイン取得
   useState(() => {
@@ -83,10 +84,18 @@ const ImportEvent = () => {
             throw new Error("参加者リストが無効です");
           }
 
-          // 当日参加者リストがある場合、デフォルトで含める
+          // 当日参加者リストと出席状態の有無を確認
           const hasTodayList =
             jsonData.todaylist && jsonData.todaylist.length > 0;
-          setRestoreAttendance(hasTodayList);
+          const hasAttendedStatus =
+            jsonData.participants &&
+            Array.isArray(jsonData.participants) &&
+            jsonData.participants.some(
+              (p: any) => typeof p === "object" && p.attended === true
+            );
+
+          setRestoreTodayList(hasTodayList);
+          setRestoreAttendedStatus(hasAttendedStatus);
 
           const eventData: ImportedEventData = {
             eventname: jsonData.eventname || "",
@@ -128,9 +137,10 @@ const ImportEvent = () => {
 
     setIsRegistering(true);
     try {
-      // 出席情報を抽出（オブジェクト形式の場合）
+      // 出席情報を抽出（オブジェクト形式の場合、かつ復元が有効な場合）
       let attendedIndices: number[] = [];
       if (
+        restoreAttendedStatus &&
         Array.isArray(importedData.participants) &&
         importedData.participants.length > 0
       ) {
@@ -149,10 +159,9 @@ const ImportEvent = () => {
         );
       }
 
-      // 出席状態を復元しない場合、当日参加者もクリア
-      if (!restoreAttendance) {
+      // 当日参加者リストを復元しない場合はクリア
+      if (!restoreTodayList) {
         dataToSend.todaylist = [];
-        attendedIndices = []; // 出席情報もクリア
       }
 
       const sendData = JSON.stringify(dataToSend);
@@ -466,37 +475,98 @@ const ImportEvent = () => {
                       </div>
                     </div>
 
-                    {/* 当日参加者リストインポートオプション */}
-                    {importedData.todaylist &&
-                      importedData.todaylist.length > 0 && (
-                        <div className="border border-amber-200 rounded-xl p-6 bg-amber-50">
-                          <div className="flex items-start gap-3">
-                            <input
-                              type="checkbox"
-                              id="restoreAttendance"
-                              checked={restoreAttendance}
-                              onChange={(e) =>
-                                setRestoreAttendance(e.target.checked)
-                              }
-                              className="mt-1 w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                            />
-                            <div className="flex-1">
-                              <label
-                                htmlFor="restoreAttendance"
-                                className="font-semibold text-amber-900 cursor-pointer"
-                              >
-                                当日参加者リストを含める
-                              </label>
-                              <p className="text-sm text-amber-700 mt-1">
-                                チェックすると、当日参加者リスト（
-                                {importedData.todaylist.length}
-                                名）も一緒にインポートされます。
-                                チェックを外すと、参加者リストのみを使用します。
-                              </p>
+                    {/* インポートオプション */}
+                    {((importedData.todaylist &&
+                      importedData.todaylist.length > 0) ||
+                      importedData.participants.some(
+                        (p: any) => typeof p === "object" && p.attended
+                      )) && (
+                      <div className="border border-indigo-200 rounded-xl p-6 bg-gradient-to-br from-indigo-50 to-purple-50">
+                        <h4 className="font-semibold text-indigo-900 mb-4 flex items-center gap-2">
+                          <AlertCircle size={18} />
+                          インポート設定
+                        </h4>
+                        <div className="space-y-4">
+                          {/* 当日参加者リスト */}
+                          {importedData.todaylist &&
+                            importedData.todaylist.length > 0 && (
+                              <div className="bg-white p-4 rounded-lg border border-amber-200">
+                                <div className="flex items-start gap-3">
+                                  <input
+                                    type="checkbox"
+                                    id="restoreTodayList"
+                                    checked={restoreTodayList}
+                                    onChange={(e) =>
+                                      setRestoreTodayList(e.target.checked)
+                                    }
+                                    className="mt-1 w-5 h-5 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
+                                  />
+                                  <div className="flex-1">
+                                    <label
+                                      htmlFor="restoreTodayList"
+                                      className="font-semibold text-amber-900 cursor-pointer flex items-center gap-2"
+                                    >
+                                      当日参加者リストを含める
+                                      <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">
+                                        {importedData.todaylist.length}名
+                                      </span>
+                                    </label>
+                                    <p className="text-sm text-amber-700 mt-1">
+                                      チェックすると、保存された当日参加者リストも一緒にインポートされます。
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                          {/* 出席状態 */}
+                          {importedData.participants.some(
+                            (p: any) => typeof p === "object" && p.attended
+                          ) && (
+                            <div className="bg-white p-4 rounded-lg border border-green-200">
+                              <div className="flex items-start gap-3">
+                                <input
+                                  type="checkbox"
+                                  id="restoreAttendedStatus"
+                                  checked={restoreAttendedStatus}
+                                  onChange={(e) =>
+                                    setRestoreAttendedStatus(e.target.checked)
+                                  }
+                                  className="mt-1 w-5 h-5 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                                />
+                                <div className="flex-1">
+                                  <label
+                                    htmlFor="restoreAttendedStatus"
+                                    className="font-semibold text-green-900 cursor-pointer flex items-center gap-2"
+                                  >
+                                    出席状態を復元する
+                                    <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
+                                      {
+                                        importedData.participants.filter(
+                                          (p: any) =>
+                                            typeof p === "object" && p.attended
+                                        ).length
+                                      }
+                                      名出席済み
+                                    </span>
+                                  </label>
+                                  <p className="text-sm text-green-700 mt-1">
+                                    チェックすると、保存された出席状態も復元されます。
+                                  </p>
+                                </div>
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </div>
-                      )}
+
+                        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <p className="text-xs text-blue-800">
+                            💡
+                            両方のチェックを外すと、参加者リストのみが新しいイベントとして登録されます。
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
                     {/* 参加者リストプレビュー */}
                     {importedData.participants.length > 0 && (
