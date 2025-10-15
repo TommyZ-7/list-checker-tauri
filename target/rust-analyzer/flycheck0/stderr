@@ -1,1 +1,7 @@
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.61s
+error: failed to parse manifest at `E:\code\list-checker-tauri\src-tauri\Cargo.toml`
+
+Caused by:
+  failed to parse the `edition` key
+
+Caused by:
+  this version of Cargo is older than the `2025` edition, and only supports `2015`, `2018`, `2021`, and `2024` editions.
