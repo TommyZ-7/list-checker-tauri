@@ -280,6 +280,7 @@
                 autocomplete="off"
                 autocorrect="off"
                 autofocus
+                inputmode="latin"
               />
               <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                 <button
@@ -304,6 +305,9 @@
             </div>
             <p class="text-sm text-gray-500 mt-2">
               学籍番号を入力してEnterキーを押すと出席が登録されます
+            </p>
+            <p class="text-sm text-gray-500 mt-2">
+              うまく入力できない場合、入力モードが半角英数字に設定されていることを確認してください
             </p>
           </div>
 
@@ -861,6 +865,25 @@
         return expectedAttendees
           .map((attendee, index) => (attendee.attended ? index : -1))
           .filter((index) => index !== -1);
+      }
+
+      /**
+       * 文字列を半角英数字のみに変換・フィルタリングする関数
+       */
+      function toHalfWidthAlphanumericOnly(str) {
+        if (!str) return "";
+
+        let converted = str;
+
+        // 1. 全角英数字を半角に変換
+        converted = converted.replace(/[Ａ-Ｚａ-ｚ０-９]/g, (s) => {
+          return String.fromCharCode(s.charCodeAt(0) - 0xfee0);
+        });
+
+        // 2. 半角英数字（0-9, a-z, A-Z）以外をすべて削除
+        converted = converted.replace(/[^0-9a-zA-Z]/g, "");
+
+        return converted;
       }
 
       // 出席登録

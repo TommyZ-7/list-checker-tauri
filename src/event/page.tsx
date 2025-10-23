@@ -24,7 +24,6 @@ import { Check, Settings, AlignJustify } from "lucide-react";
 import { io } from "socket.io-client";
 import * as XLSX from "xlsx";
 
-
 type Attendee = {
   id: string;
   attended: boolean;
@@ -273,6 +272,23 @@ function EventPage() {
       setDataFetched(true);
     }
   }, []);
+
+  const toHalfWidthAlphanumericOnly = (str: string) => {
+    if (!str) return ""; // nullやundefinedの場合、空文字を返す
+
+    let converted = str;
+
+    // 1. 全角英数字を半角に変換
+    converted = converted.replace(/[Ａ-Ｚａ-ｚ０-９]/g, (s) => {
+      return String.fromCharCode(s.charCodeAt(0) - 0xfee0);
+    });
+
+    // 2. 半角英数字（0-9, a-z, A-Z）以外をすべて削除
+    // (全角文字、記号、スペースなどもここで削除されます)
+    converted = converted.replace(/[^0-9a-zA-Z]/g, "");
+
+    return converted;
+  };
 
   const scrollToElement = (elementId: string) => {
     const element = document.getElementById(elementId);
@@ -615,7 +631,11 @@ function EventPage() {
                     ref={inputRef}
                     type="text"
                     value={newAttendee}
-                    onChange={(e) => setNewAttendee(e.target.value)}
+                    onChange={(e) =>
+                      setNewAttendee(
+                        toHalfWidthAlphanumericOnly(e.target.value)
+                      )
+                    }
                     onKeyDown={handleKeyDown}
                     placeholder="学籍番号を入力"
                     className="w-full h-15 px-4 py-3 border border-indigo-300 ring-indigo-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200g"
