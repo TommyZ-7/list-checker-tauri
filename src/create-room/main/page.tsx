@@ -182,7 +182,7 @@ const EventRegistration = () => {
 
               if (!cell) break;
 
-              participantList.push(cell.v);
+              participantList.push(String(cell.v));
               rowIndex++;
             }
 
@@ -196,7 +196,7 @@ const EventRegistration = () => {
 
                 if (!cell) break;
 
-                participantList.push(cell.v);
+                participantList.push(String(cell.v));
                 rowIndex++;
               }
             }
@@ -219,7 +219,7 @@ const EventRegistration = () => {
 
               if (!cell) break;
 
-              participantList.push(cell.v);
+              participantList.push(String(cell.v));
               rowIndex++;
             }
             await sleep(1000);
